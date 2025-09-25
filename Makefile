@@ -14,3 +14,7 @@ $(TARGET): $(OBJ)
 
 clean:
 	rm -f $(OBJ) $(TARGET)
+
+debug:
+	$(MAKE) CXXFLAGS="-Wall -Wextra -std=c++20 -g -DDEBUG -O0"
+

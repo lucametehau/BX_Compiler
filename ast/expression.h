@@ -8,7 +8,9 @@ namespace Grammar::Expressions {
 struct Expression {
     static std::unique_ptr<AST::Expression> match(Parser::Parser& parser, int min_precedence = 0) {
         auto left = match_term(parser);
+#ifdef DEBUG
         std::cout << parser.peek_pos() << " in match xddddddd\n";
+#endif
 
         while (true) {
             const auto token = parser.peek();

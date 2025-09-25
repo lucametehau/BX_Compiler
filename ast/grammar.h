@@ -9,15 +9,19 @@ template<Lexer::Type T>
 class Token {
 public:
     static std::unique_ptr<AST::AST> match(Parser::Parser& parser) {
+#ifdef DEBUG
         std::cout << parser.peek_pos() << " xdd in Token\n";
+#endif
         if (parser.peek().is_type(T)) {
             auto node = std::make_unique<AST::Token>(parser.peek());
             parser.next();
             return node;
         }
+#ifdef DEBUG
         else {
             std::cerr << "token unmatched, needed " << T << "\n";
         }
+#endif
         return nullptr;
     }
 };
@@ -28,7 +32,9 @@ struct Seq {
         const auto start_pos = parser.peek_pos();
         std::vector<std::unique_ptr<AST::AST>> rules;
 
+#ifdef DEBUG
         std::cout << start_pos << " xdd in SEQ\n";
+#endif
 
         bool matches = true;
         (([&] {
@@ -41,7 +47,9 @@ struct Seq {
             }
         }()), ...);
 
+#ifdef DEBUG
         std::cout << matches << " for " << start_pos << " xdd in SEQ\n";
+#endif
 
         if (matches)
             return std::make_unique<AST::Seq>(std::move(rules));
@@ -58,7 +66,9 @@ struct Or {
         const auto start_pos = parser.peek_pos();
         std::unique_ptr<AST::AST> rule;
 
+#ifdef DEBUG
         std::cout << start_pos << " xdd in OR\n";
+#endif
 
         bool matches = false;
         (([&]() {
@@ -70,7 +80,9 @@ struct Or {
             }
         }()), ...);
 
+#ifdef DEBUG
         std::cout << matches << " for " << start_pos << " xdd in OR\n";
+#endif
 
         if (matches)
             return std::make_unique<AST::Or>(std::move(rule));
@@ -87,7 +99,9 @@ struct Star {
     static std::unique_ptr<AST::AST> match(Parser::Parser& parser) {
         std::vector<std::unique_ptr<AST::AST>> rules;
 
+#ifdef DEBUG
         std::cout << parser.peek_pos() << " xdd in STAR\n";
+#endif
 
         while (true) {
             const auto start_pos = parser.peek_pos();
