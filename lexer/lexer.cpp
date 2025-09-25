@@ -43,8 +43,7 @@ void Lexer::skip_ws() {
 
 [[nodiscard]] std::vector<Token> Lexer::tokenize() {
     std::vector<Token> tokens;
-    int i = 0;
-    for (auto token = next(); !token.is_end() && ++i < 30; token = next()) {
+    for (auto token = next(); !token.is_end(); token = next()) {
         tokens.push_back(token);
     }
     return tokens;

@@ -33,7 +33,6 @@ inline const std::map<Type, Operator> operators = {
     {Type::STAR, {60, Associativity::LEFT}},
     {Type::SLASH, {60, Associativity::LEFT}},
     {Type::PCENT, {60, Associativity::LEFT}},
-    {Type::TILD, {80, Associativity::LEFT}},
 };
 
 class Token {
@@ -52,12 +51,12 @@ public:
 
     [[nodiscard]] const std::string get_text() const { return text; }
 
-    [[nodiscard]] const int precedence() const {
+    [[nodiscard]] int precedence() const {
         const auto it = operators.find(type);
         return it == operators.end() ? -1 : it->second.precedence; // force quit if non operator
     }
 
-    [[nodiscard]] const Associativity associativity() const {
+    [[nodiscard]] Associativity associativity() const {
         const auto it = operators.find(type);
         return it == operators.end() ? Associativity::NONE : it->second.assoc; // force quit if non operator
     }

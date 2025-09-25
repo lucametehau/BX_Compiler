@@ -25,7 +25,6 @@ struct Expression {
     }
 
     static std::unique_ptr<AST::Expression> match_term(Parser::Parser& parser) {
-        // LBRACE expr RBRACE
         const auto token = parser.peek();
         if (token.is_type(Lexer::LPAREN)) {
             parser.next();
