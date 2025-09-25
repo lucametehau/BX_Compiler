@@ -2,7 +2,7 @@
 
 namespace Grammar::Statements {
 
-using VarDecl = Seq<
+struct VarDecl : Seq<
     Token<Lexer::VAR>,
     Expressions::Identifier,
     Token<Lexer::EQ>,
@@ -10,41 +10,41 @@ using VarDecl = Seq<
     Token<Lexer::COLON>,
     Token<Lexer::INT>,
     Token<Lexer::SEMICOLON>
->;
+> {};
 
-using Assign = Seq<
+struct Assign : Seq<
     Expressions::Identifier,
     Token<Lexer::EQ>,
     Expressions::Expression,
     Token<Lexer::SEMICOLON>
->;
+> {};
 
-using Print = Seq<
+struct Print : Seq<
     Token<Lexer::PRINT>,
     Token<Lexer::LPAREN>,
     Expressions::Expression,
     Token<Lexer::RPAREN>,
     Token<Lexer::SEMICOLON>
->;
+> {};
 
-using Statement = Or<
+struct Statement : Or<
     VarDecl,
     Assign,
     Print
->;
+> {};
 
-using Block = Seq<
+struct Block : Seq<
     Token<Lexer::LBRACE>,
     Star<Statement>,
     Token<Lexer::RBRACE>
->;
+> {};
 
-using Program = Seq<
+struct Program : Seq<
     Token<Lexer::DEF>,
     Expressions::Identifier,
     Token<Lexer::LPAREN>,
     Token<Lexer::RPAREN>,
     Block
->;
+> {};
 
 };

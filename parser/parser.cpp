@@ -2,8 +2,8 @@
 
 namespace Parser {
 
-[[nodiscard]] std::vector<std::unique_ptr<AST::AST>> parse() {
-    return {};
-}
+// [[nodiscard]] std::vector<std::unique_ptr<AST::AST>> parse() {
+//     return {};
+// }
 
 };

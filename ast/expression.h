@@ -4,18 +4,18 @@ namespace Grammar::Expressions {
 
 struct Expression;
 
-using Number = Token<Lexer::NUMBER>;
-using Identifier = Token<Lexer::IDENT>;
+struct Number : Token<Lexer::NUMBER> {};
+struct Identifier : Token<Lexer::IDENT> {};
 
-using UniOpExpression = Seq<
+struct UniOpExpression : Seq<
     Or<
         Token<Lexer::DASH>,
         Token<Lexer::TILD>
     >,
     Expression
->;
+> {};
 
-using BinOpExpression = Seq<
+struct BinOpExpression : Seq<
     Expression,
     Or<
         Token<Lexer::PLUS>,
@@ -28,7 +28,7 @@ using BinOpExpression = Seq<
         Token<Lexer::HAT>
     >,
     Expression
->;
+> {};
 
 struct Expression : Or<
     Number,

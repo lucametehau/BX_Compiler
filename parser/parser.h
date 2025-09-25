@@ -34,7 +34,7 @@ public:
         pos++;
     }
 
-    [[nodiscard]] constexpr std::vector<std::unique_ptr<AST::AST>> parse() const;
+    // [[nodiscard]] constexpr std::vector<std::unique_ptr<AST::AST>> parse() const;
 };
 
 }; // namespace Parser
