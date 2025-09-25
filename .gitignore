@@ -1,0 +1,5 @@
+*.o
+*.cpp
+*.obj
+*.exe
+.vscode/*
