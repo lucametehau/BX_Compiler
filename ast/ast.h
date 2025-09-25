@@ -64,4 +64,55 @@ struct Star : AST {
     }
 };
 
+struct Expression : AST {
+    void print(std::ostream& os, int spaces = 0) const override = 0;
+};
+
+struct NumberExpression : Expression {
+    int64_t value;
+
+    NumberExpression(int64_t value) : value(value) {}
+    void print(std::ostream& os, int spaces = 0) const override {
+        os << std::string(2 * spaces, ' ') << "[NUMBER] " << value << "\n";
+    }
+};
+
+struct IdentExpression : Expression {
+    std::string name;
+
+    IdentExpression(std::string name) : name(name) {}
+    void print(std::ostream& os, int spaces = 0) const override {
+        os << std::string(2 * spaces, ' ') << "[IDENT] " << name << "\n";
+    }
+};
+
+struct UniOpExpression : Expression {
+    Lexer::Token token;
+    std::unique_ptr<Expression> expr;
+
+    UniOpExpression(Lexer::Token token, std::unique_ptr<Expression> expr) : token(token), expr(std::move(expr)) {}
+
+    void print(std::ostream& os, int spaces = 0) const override {
+        os << std::string(2 * spaces, ' ') << "[UniOp] " << token.get_text() << "\n";
+        if (expr)
+            expr->print(os, spaces + 1);
+    }
+};
+
+struct BinOpExpression : Expression {
+    Lexer::Token token;
+    std::unique_ptr<Expression> left, right;
+
+    BinOpExpression(Lexer::Token token, std::unique_ptr<Expression> left, std::unique_ptr<Expression> right) 
+        : token(token), left(std::move(left)), right(std::move(right)) {}
+
+    void print(std::ostream& os, int spaces = 0) const override {
+        os << std::string(2 * spaces, ' ') << "[BinOp] " << token.get_text() << "\n";
+        if (left)
+            left->print(os, spaces + 1);
+        if (right)
+            right->print(os, spaces + 1);
+    }
+};
+
 }; // namespace AST

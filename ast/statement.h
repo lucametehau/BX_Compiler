@@ -4,7 +4,7 @@ namespace Grammar::Statements {
 
 struct VarDecl : Seq<
     Token<Lexer::VAR>,
-    Expressions::Identifier,
+    Token<Lexer::IDENT>,
     Token<Lexer::EQ>,
     Expressions::Expression,
     Token<Lexer::COLON>,
@@ -13,7 +13,7 @@ struct VarDecl : Seq<
 > {};
 
 struct Assign : Seq<
-    Expressions::Identifier,
+    Token<Lexer::IDENT>,
     Token<Lexer::EQ>,
     Expressions::Expression,
     Token<Lexer::SEMICOLON>
@@ -41,7 +41,7 @@ struct Block : Seq<
 
 struct Program : Seq<
     Token<Lexer::DEF>,
-    Expressions::Identifier,
+    Token<Lexer::IDENT>,
     Token<Lexer::LPAREN>,
     Token<Lexer::RPAREN>,
     Block

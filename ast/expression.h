@@ -1,45 +1,59 @@
 #include "grammar.h"
+#include <stdexcept>
+#include <map>
+#include <iostream>
 
 namespace Grammar::Expressions {
 
-struct Expression;
+struct Expression {
+    static std::unique_ptr<AST::Expression> match(Parser::Parser& parser, int min_precedence = 0) {
+        auto left = match_term(parser);
+        std::cout << parser.peek_pos() << " in match xddddddd\n";
 
-struct Number : Token<Lexer::NUMBER> {};
-struct Identifier : Token<Lexer::IDENT> {};
+        while (true) {
+            const auto token = parser.peek();
+            int precedence = token.precedence();
+            if (precedence < min_precedence) break;
 
-struct UniOpExpression : Seq<
-    Or<
-        Token<Lexer::DASH>,
-        Token<Lexer::TILD>
-    >,
-    Expression
-> {};
+            parser.next();
+            int next_precedence = token.associativity() == Lexer::Associativity::LEFT ? precedence + 1 : precedence;
+            auto right = Expression::match(parser, next_precedence);
+            left = std::make_unique<AST::BinOpExpression>(token, std::move(left), std::move(right));
+        }
 
-struct BinOpExpression : Seq<
-    Expression,
-    Or<
-        Token<Lexer::PLUS>,
-        Token<Lexer::DASH>,
-        Token<Lexer::STAR>,
-        Token<Lexer::SLASH>,
-        Token<Lexer::PCENT>,
-        Token<Lexer::AMP>,
-        Token<Lexer::PIPE>,
-        Token<Lexer::HAT>
-    >,
-    Expression
-> {};
+        return left;
+    }
 
-struct Expression : Or<
-    Number,
-    Identifier,
-    Seq<
-        Token<Lexer::LPAREN>,
-        Expression,
-        Token<Lexer::RPAREN>
-    >,
-    BinOpExpression,
-    UniOpExpression
-> {};
+    static std::unique_ptr<AST::Expression> match_term(Parser::Parser& parser) {
+        // LBRACE expr RBRACE
+        const auto token = parser.peek();
+        if (token.is_type(Lexer::LPAREN)) {
+            parser.next();
+            auto expr = Expression::match(parser);
+            if (!parser.peek().is_type(Lexer::RPAREN))
+                throw std::runtime_error("expected ')'");
+            parser.next();
+            return expr;
+        }
+
+        if (token.is_type(Lexer::NUMBER)) {
+            parser.next();
+            return std::make_unique<AST::NumberExpression>(std::stoll(token.get_text()));
+        }
+        
+        if (token.is_type(Lexer::IDENT)) {
+            parser.next();
+            return std::make_unique<AST::IdentExpression>(token.get_text());
+        }
+
+        if (token.is_type(Lexer::DASH) || token.is_type(Lexer::TILD)) {
+            parser.next();
+            auto expr = Expression::match(parser, 80);
+            return std::make_unique<AST::UniOpExpression>(token, std::move(expr));
+        }
+
+        throw std::runtime_error("undefined term rule");
+    }
+};
     
 }; // namespace Grammar::Expressions

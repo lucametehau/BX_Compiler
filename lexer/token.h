@@ -2,6 +2,7 @@
 #include <string>
 #include <map>
 #include <fstream>
+#include <cassert>
 
 namespace Lexer {
 
@@ -11,6 +12,28 @@ enum Type {
     LPAREN, RPAREN, LBRACE, RBRACE, COLON, SEMICOLON,
     AMP, DASH, EQ, HAT, PCENT, PIPE, PLUS, SLASH, STAR, TILD,
     END
+};
+
+
+enum class Associativity {
+    LEFT, RIGHT, NONE
+};
+
+struct Operator {
+    int precedence;
+    Associativity assoc;
+};
+
+inline const std::map<Type, Operator> operators = {
+    {Type::PIPE, {10, Associativity::LEFT}},
+    {Type::HAT, {20, Associativity::LEFT}},
+    {Type::AMP, {30, Associativity::LEFT}},
+    {Type::PLUS, {50, Associativity::LEFT}},
+    {Type::DASH, {50, Associativity::LEFT}},
+    {Type::STAR, {60, Associativity::LEFT}},
+    {Type::SLASH, {60, Associativity::LEFT}},
+    {Type::PCENT, {60, Associativity::LEFT}},
+    {Type::TILD, {80, Associativity::LEFT}},
 };
 
 class Token {
@@ -28,6 +51,16 @@ public:
     [[nodiscard]] constexpr bool is_end() const { return type == Type::END; }
 
     [[nodiscard]] const std::string get_text() const { return text; }
+
+    [[nodiscard]] const int precedence() const {
+        const auto it = operators.find(type);
+        return it == operators.end() ? -1 : it->second.precedence; // force quit if non operator
+    }
+
+    [[nodiscard]] const Associativity associativity() const {
+        const auto it = operators.find(type);
+        return it == operators.end() ? Associativity::NONE : it->second.assoc; // force quit if non operator
+    }
 
     friend std::ostream& operator << (std::ostream &os, const Token& token) {
         os << "(" << token.type << ", " << token.text << "), ";
