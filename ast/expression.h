@@ -9,7 +9,7 @@ struct Expression {
     static std::unique_ptr<AST::Expression> match(Parser::Parser& parser, int min_precedence = 0) {
         auto left = match_term(parser);
 #ifdef DEBUG
-        std::cout << parser.peek_pos() << " in match xddddddd\n";
+        std::cout << parser.peek_pos() << ", " << parser.peek().get_text() << " in expression matching\n";
 #endif
 
         while (true) {
@@ -27,6 +27,9 @@ struct Expression {
     }
 
     static std::unique_ptr<AST::Expression> match_term(Parser::Parser& parser) {
+#ifdef DEBUG
+        std::cout << parser.peek_pos() << ", " << parser.peek().get_text() << " in expression term matching\n";
+#endif
         const auto token = parser.peek();
         if (token.is_type(Lexer::LPAREN)) {
             parser.next();
@@ -53,6 +56,7 @@ struct Expression {
             return std::make_unique<AST::UniOpExpression>(token, std::move(expr));
         }
 
+        return nullptr;
         throw std::runtime_error("undefined term rule");
     }
 };

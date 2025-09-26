@@ -14,7 +14,12 @@ inline std::ostream& operator << (std::ostream& os, const std::unique_ptr<AST>& 
     if (ast)
         ast->print(os);
     return os;
-} 
+}
+
+
+/*
+General AST Rules
+*/
 
 struct Token : AST {
     Lexer::Token token;
@@ -64,6 +69,10 @@ struct Star : AST {
     }
 };
 
+/*
+Expressions
+*/
+
 struct Expression : AST {
     void print(std::ostream& os, int spaces = 0) const override = 0;
 };
@@ -112,6 +121,49 @@ struct BinOpExpression : Expression {
             left->print(os, spaces + 1);
         if (right)
             right->print(os, spaces + 1);
+    }
+};
+
+/*
+Statements
+*/
+struct Statement : AST {
+    void print(std::ostream& os, int spaces = 0) const override = 0;
+};
+
+struct VarDecl : Statement {
+    std::string name;
+    std::unique_ptr<Expression> expr;
+
+    VarDecl(std::string name, std::unique_ptr<Expression> expr) : name(name), expr(std::move(expr)) {}
+    void print(std::ostream& os, int spaces = 0) const override {
+        os << std::string(2 * spaces, ' ') << "[VarDecl] " << name << " =\n";
+        if (expr)
+            expr->print(os, spaces + 1);
+    }
+};
+
+struct Assign : Statement {
+    std::string name;
+    std::unique_ptr<Expression> expr;
+
+    Assign(std::string name, std::unique_ptr<Expression> expr) : name(name), expr(std::move(expr)) {}
+    void print(std::ostream& os, int spaces = 0) const override {
+        os << std::string(2 * spaces, ' ') << "[Assign] " << name << " =\n";
+        if (expr)
+            expr->print(os, spaces + 1);
+    }
+};
+
+struct Print : Statement {
+    std::unique_ptr<Expression> expr;
+
+    Print(std::unique_ptr<Expression> expr) : expr(std::move(expr)) {}
+
+    void print(std::ostream& os, int spaces = 0) const override {
+        os << std::string(2 * spaces, ' ') << "[Print]\n";
+        if (expr)
+            expr->print(os, spaces + 1);
     }
 };
 
