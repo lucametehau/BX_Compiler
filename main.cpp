@@ -41,8 +41,13 @@ int main(int argc, char** argv) {
     std::cout << "Parsing and building AST...\n";
     auto ast = Grammar::Blocks::Program::match(parser);
 
-    if (ast)
-        ast->print(std::cout);
-    // std::cout << ast << "\n";
+    if (!ast) {
+        throw std::runtime_error("Failed parsing file!");
+        return 1;
+    }
+
+    ast->print(std::cout);
+    
+    // auto tac_output = ast->munch();
     return 0;
 }

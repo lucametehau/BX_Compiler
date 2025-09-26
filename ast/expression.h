@@ -1,4 +1,5 @@
-#include "grammar.h"
+#include "ast.h"
+#include "../parser/parser.h"
 #include <stdexcept>
 #include <map>
 #include <iostream>
