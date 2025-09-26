@@ -47,7 +47,10 @@ int main(int argc, char** argv) {
     }
 
     ast->print(std::cout);
-    
-    // auto tac_output = ast->munch();
+
+    MM::MM muncher;
+    auto instr = ast->munch(muncher);
+    for (auto &t : instr)
+        std::cout << t << "\n";
     return 0;
 }

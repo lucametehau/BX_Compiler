@@ -1,5 +1,7 @@
 #pragma once
 #include "../lexer/token.h"
+#include "../mm/tac.h"
+#include "../mm/mm.h"
 #include <vector>
 #include <memory>
 
@@ -7,7 +9,10 @@ namespace AST {
 
 struct AST {
     virtual ~AST() = default;
+    
     virtual void print(std::ostream& os, int spaces = 0) const = 0;
+    
+    virtual std::vector<TAC> munch(MM::MM& muncher) const = 0;
 };
 
 template<typename T, typename = std::enable_if_t<std::is_base_of_v<AST, T>>> // wtf
@@ -23,24 +28,32 @@ Expressions
 
 struct Expression : AST {
     void print(std::ostream& os, int spaces = 0) const override = 0;
+
+    [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher) const override = 0;
 };
 
 struct NumberExpression : Expression {
     int64_t value;
 
     NumberExpression(int64_t value) : value(value) {}
+
     void print(std::ostream& os, int spaces = 0) const override {
         os << std::string(2 * spaces, ' ') << "[NUMBER] " << value << "\n";
     }
+
+    [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher) const override;
 };
 
 struct IdentExpression : Expression {
     std::string name;
 
     IdentExpression(std::string name) : name(name) {}
+
     void print(std::ostream& os, int spaces = 0) const override {
         os << std::string(2 * spaces, ' ') << "[IDENT] " << name << "\n";
     }
+
+    [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher) const override;
 };
 
 struct UniOpExpression : Expression {
@@ -54,6 +67,8 @@ struct UniOpExpression : Expression {
         if (expr)
             expr->print(os, spaces + 1);
     }
+
+    [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher) const override;
 };
 
 struct BinOpExpression : Expression {
@@ -70,6 +85,8 @@ struct BinOpExpression : Expression {
         if (right)
             right->print(os, spaces + 1);
     }
+
+    [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher) const override;
 };
 
 /*
@@ -77,6 +94,8 @@ Statements
 */
 struct Statement : AST {
     void print(std::ostream& os, int spaces = 0) const override = 0;
+
+    [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher) const override = 0;
 };
 
 struct VarDecl : Statement {
@@ -89,6 +108,8 @@ struct VarDecl : Statement {
         if (expr)
             expr->print(os, spaces + 1);
     }
+
+    [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher) const override;
 };
 
 struct Assign : Statement {
@@ -101,6 +122,8 @@ struct Assign : Statement {
         if (expr)
             expr->print(os, spaces + 1);
     }
+
+    [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher) const override;
 };
 
 struct Print : Statement {
@@ -113,6 +136,8 @@ struct Print : Statement {
         if (expr)
             expr->print(os, spaces + 1);
     }
+
+    [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher) const override;
 };
 
 /*
@@ -131,6 +156,8 @@ struct Block : AST {
                 statement->print(os, spaces + 1);
         }
     }
+
+    [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher) const override;
 };
 
 struct Program : Block {
@@ -143,6 +170,8 @@ struct Program : Block {
         if (block)
             block->print(os, spaces + 1);
     }
+
+    [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher) const override;
 };
 
 }; // namespace AST
