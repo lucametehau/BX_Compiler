@@ -57,7 +57,6 @@ struct Expression {
         }
 
         return nullptr;
-        throw std::runtime_error("undefined term rule");
     }
 };
     

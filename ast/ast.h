@@ -10,6 +10,7 @@ struct AST {
     virtual void print(std::ostream& os, int spaces = 0) const = 0;
 };
 
+template<typename T, typename = std::enable_if_t<std::is_base_of_v<AST, T>>> // wtf
 inline std::ostream& operator << (std::ostream& os, const std::unique_ptr<AST>& ast) {
     if (ast)
         ast->print(os);
@@ -164,6 +165,36 @@ struct Print : Statement {
         os << std::string(2 * spaces, ' ') << "[Print]\n";
         if (expr)
             expr->print(os, spaces + 1);
+    }
+};
+
+/*
+Special rules
+*/
+struct Block : AST {
+    std::vector<std::unique_ptr<Statement>> statements;
+
+    Block() = default; // needed for Program
+    Block(std::vector<std::unique_ptr<Statement>> statements) : statements(std::move(statements)) {}
+
+    void print(std::ostream& os, int spaces = 0) const override {
+        os << std::string(2 * spaces, ' ') << "[Block]\n";
+        for (auto &statement : statements) {
+            if (statement)
+                statement->print(os, spaces + 1);
+        }
+    }
+};
+
+struct Program : Block {
+    std::unique_ptr<Block> block;
+
+    Program(std::unique_ptr<Block> block) : block(std::move(block)) {}
+
+    void print(std::ostream& os, int spaces = 0) const override {
+        os << std::string(2 * spaces, ' ') << "[Program]\n";
+        if (block)
+            block->print(os, spaces + 1);
     }
 };
 

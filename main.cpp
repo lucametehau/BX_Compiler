@@ -2,7 +2,7 @@
 #include <fstream>
 #include <sstream>
 #include "lexer/lexer.h"
-#include "ast/statement.h"
+#include "ast/block.h"
 
 int main(int argc, char** argv) {
     if (argc != 2) {
@@ -39,8 +39,10 @@ int main(int argc, char** argv) {
 
     Parser::Parser parser(tokens);
     std::cout << "Parsing and building AST...\n";
-    auto ast = Grammar::Statements::Program::match(parser);
+    auto ast = Grammar::Blocks::Program::match(parser);
 
-    std::cout << ast << "\n";
+    if (ast)
+        ast->print(std::cout);
+    // std::cout << ast << "\n";
     return 0;
 }

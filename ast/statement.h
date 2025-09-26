@@ -82,8 +82,7 @@ struct Print {
             return nullptr;
         parser.next();
 
-        auto res = std::make_unique<AST::Print>(std::move(expr));
-        return res;
+        return std::make_unique<AST::Print>(std::move(expr));
     }
 };
 
@@ -99,19 +98,5 @@ struct Statement {
         return nullptr;
     }
 };
-
-struct Block : Seq<
-    Token<Lexer::LBRACE>,
-    Star<Statement>,
-    Token<Lexer::RBRACE>
-> {};
-
-struct Program : Seq<
-    Token<Lexer::DEF>,
-    Token<Lexer::IDENT>,
-    Token<Lexer::LPAREN>,
-    Token<Lexer::RPAREN>,
-    Block
-> {};
 
 };
