@@ -33,7 +33,7 @@ std::unique_ptr<AST::Expression> Expression::match_term(Parser::Parser& parser) 
     if (token.is_type(Lexer::LPAREN)) {
         parser.next();
         auto expr = Expression::match(parser);
-        if (!parser.peek().is_type(Lexer::RPAREN))
+        if (!parser.expect(Lexer::RPAREN))
             throw std::runtime_error("expected ')'");
         parser.next();
         return expr;

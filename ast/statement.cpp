@@ -14,7 +14,7 @@ std::unique_ptr<AST::Statement> Statement::match(Parser::Parser& parser) {
 }
 
 std::unique_ptr<AST::Statement> VarDecl::match(Parser::Parser& parser) {
-    if (!parser.peek().is_type(Lexer::VAR))
+    if (!parser.expect(Lexer::VAR))
         return nullptr;
     parser.next();
 
@@ -23,7 +23,7 @@ std::unique_ptr<AST::Statement> VarDecl::match(Parser::Parser& parser) {
         return nullptr;
     parser.next();
 
-    if (!parser.peek().is_type(Lexer::EQ))
+    if (!parser.expect(Lexer::EQ))
         return nullptr;
     parser.next();
 
@@ -31,15 +31,15 @@ std::unique_ptr<AST::Statement> VarDecl::match(Parser::Parser& parser) {
     if (!expr)
         return nullptr;
 
-    if (!parser.peek().is_type(Lexer::COLON))
+    if (!parser.expect(Lexer::COLON))
         return nullptr;
     parser.next();
 
-    if (!parser.peek().is_type(Lexer::INT))
+    if (!parser.expect(Lexer::INT))
         return nullptr;
     parser.next();
 
-    if (!parser.peek().is_type(Lexer::SEMICOLON))
+    if (!parser.expect(Lexer::SEMICOLON))
         return nullptr;
     parser.next();
 
@@ -52,7 +52,7 @@ std::unique_ptr<AST::Statement> Assign::match(Parser::Parser& parser) {
         return nullptr;
     parser.next();
 
-    if (!parser.peek().is_type(Lexer::EQ))
+    if (!parser.expect(Lexer::EQ))
         return nullptr;
     parser.next();
 
@@ -60,7 +60,7 @@ std::unique_ptr<AST::Statement> Assign::match(Parser::Parser& parser) {
     if (!expr)
         return nullptr;
     
-    if (!parser.peek().is_type(Lexer::SEMICOLON))
+    if (!parser.expect(Lexer::SEMICOLON))
         return nullptr;
     parser.next();
 
@@ -68,11 +68,11 @@ std::unique_ptr<AST::Statement> Assign::match(Parser::Parser& parser) {
 }
 
 std::unique_ptr<AST::Statement> Print::match(Parser::Parser& parser) {
-    if (!parser.peek().is_type(Lexer::PRINT))
+    if (!parser.expect(Lexer::PRINT))
         return nullptr;
     parser.next();
 
-    if (!parser.peek().is_type(Lexer::LPAREN))
+    if (!parser.expect(Lexer::LPAREN))
         return nullptr;
     parser.next();
 
@@ -80,11 +80,11 @@ std::unique_ptr<AST::Statement> Print::match(Parser::Parser& parser) {
     if (!expr)
         return nullptr;
     
-    if (!parser.peek().is_type(Lexer::RPAREN))
+    if (!parser.expect(Lexer::RPAREN))
         return nullptr;
     parser.next();
     
-    if (!parser.peek().is_type(Lexer::SEMICOLON))
+    if (!parser.expect(Lexer::SEMICOLON))
         return nullptr;
     parser.next();
 

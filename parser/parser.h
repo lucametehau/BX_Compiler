@@ -26,6 +26,10 @@ public:
         return pos + off;
     }
 
+    [[nodiscard]] constexpr bool expect(Lexer::Type T) const {
+        return peek().is_type(T);
+    }
+
     void set_pos(std::size_t _pos) {
         pos = _pos;
     }
@@ -33,8 +37,6 @@ public:
     void next() {
         pos++;
     }
-
-    // [[nodiscard]] constexpr std::vector<std::unique_ptr<AST::AST>> parse() const;
 };
 
 }; // namespace Parser
