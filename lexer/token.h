@@ -83,4 +83,10 @@ inline const std::map<Type, std::string> text_of_token = {
     {DEF, "def"}, {VAR, "var"}, {INT, "int"}, {PRINT, "print"}
 };
 
+inline const std::map<std::string, std::string> op_code = {
+    {"&", "and"}, {"-", "sub"}, {"+", "add"}, {"*", "mul"},
+    {"/", "div"}, {"^", "xor"}, {"%", "mod"}, {"|", "or"},
+    {"~", "neg"}
+};
+
 }; // namespace Lexer

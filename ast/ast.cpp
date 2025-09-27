@@ -27,7 +27,7 @@ Expressions
 [[nodiscard]] std::vector<TAC> UniOpExpression::munch(MM::MM& muncher) const {
     TAC tac;
     std::vector<TAC> expr_munch = expr->munch(muncher);
-    tac["opcode"] = { token.get_text() };
+    tac["opcode"] = { Lexer::op_code.find(token.get_text())->second };
     tac["args"] = { expr_munch.back()["result"][0] }; // expression result stored in this
     tac["result"] = { muncher.new_temp() };
     expr_munch.push_back(tac);
@@ -38,7 +38,7 @@ Expressions
     TAC tac;
     std::vector<TAC> left_munch = left->munch(muncher);
     std::vector<TAC> right_munch = right->munch(muncher);
-    tac["opcode"] = { token.get_text() };
+    tac["opcode"] = { Lexer::op_code.find(token.get_text())->second };
     tac["args"] = { left_munch.back()["result"][0], right_munch.back()["result"][0] }; // expression result stored in this
     tac["result"] = { muncher.new_temp() };
     for (auto &t : right_munch)

@@ -58,8 +58,11 @@ public:
         out << tab << "\"proc\": \"@main\",\n";
         out << tab << "\"body\": [\n";
         tab += "  ";
-        for (auto &t : instructions)
-            out << tab << t << ",\n";
+        for (std::size_t i = 0; i < instructions.size(); i++) {
+            out << tab << instructions[i];
+            if (i + 1 != instructions.size()) out << ",";
+            out << "\n";
+        }
         out << "    ]\n";
         out << "  }\n";
         out << "]\n";
