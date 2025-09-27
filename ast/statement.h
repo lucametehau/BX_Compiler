@@ -1,3 +1,4 @@
+#pragma once
 #include "expression.h"
 
 namespace Grammar::Statements {

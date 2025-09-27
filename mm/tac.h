@@ -1,7 +1,10 @@
+#pragma once
 #include <map>
 #include <vector>
 #include <string>
 #include <cassert>
+#pragma message(">>> NEW tac.h is being compiled <<<")
+
 
 class TAC {
 private:

@@ -3,6 +3,8 @@
 #include <string>
 #include <cassert>
 #include <vector>
+#pragma message(">>> NEW mm.h is being compiled <<<")
+
 
 namespace MM {
 

@@ -16,17 +16,17 @@ public:
     Parser(std::vector<Lexer::Token>& tokens) : tokens(std::move(tokens)), pos(0) {}
 
 public:
-    [[nodiscard]] constexpr Lexer::Token peek(std::size_t off = 0) const {
+    [[nodiscard]] Lexer::Token peek(std::size_t off = 0) const {
         assert(pos + off < tokens.size());
         return tokens[pos + off];
     }
 
-    [[nodiscard]] constexpr std::size_t peek_pos(std::size_t off = 0) const {
+    [[nodiscard]] std::size_t peek_pos(std::size_t off = 0) const {
         assert(pos + off < tokens.size());
         return pos + off;
     }
 
-    [[nodiscard]] constexpr bool expect(Lexer::Type T) const {
+    [[nodiscard]] bool expect(Lexer::Type T) const {
         return peek().is_type(T);
     }
 
