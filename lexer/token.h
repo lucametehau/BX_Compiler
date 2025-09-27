@@ -10,7 +10,8 @@ enum Type {
     IDENT, NUMBER, 
     DEF, VAR, INT, PRINT,
     LPAREN, RPAREN, LBRACE, RBRACE, COLON, SEMICOLON,
-    AMP, DASH, EQ, HAT, PCENT, PIPE, PLUS, SLASH, STAR, TILD,
+    AMP, DASH, EQ, HAT, PCENT, PIPE, PLUS, SLASH, 
+    STAR, TILD, LTLT, GTGT,
     END
 };
 
@@ -28,6 +29,8 @@ inline const std::map<Type, Operator> operators = {
     {Type::PIPE, {10, Associativity::LEFT}},
     {Type::HAT, {20, Associativity::LEFT}},
     {Type::AMP, {30, Associativity::LEFT}},
+    {Type::LTLT, {40, Associativity::LEFT}},
+    {Type::GTGT, {40, Associativity::LEFT}},
     {Type::PLUS, {50, Associativity::LEFT}},
     {Type::DASH, {50, Associativity::LEFT}},
     {Type::STAR, {60, Associativity::LEFT}},
@@ -72,7 +75,8 @@ inline const std::map<std::string, Type> lexing_tokens = {
     {":", COLON}, {";", SEMICOLON}, {"&", AMP}, {"-", DASH},
     {"=", EQ}, {"^", HAT}, {"%", PCENT}, {"|", PIPE},
     {"+", PLUS}, {"/", SLASH}, {"*", STAR}, {"~", TILD},
-    {"def", DEF}, {"var", VAR}, {"int", INT}, {"print", PRINT}
+    {"def", DEF}, {"var", VAR}, {"int", INT}, {"print", PRINT},
+    {"<<", LTLT}, {">>", GTGT}
 };
 
 inline const std::map<Type, std::string> text_of_token = {
@@ -80,13 +84,14 @@ inline const std::map<Type, std::string> text_of_token = {
     {COLON, ":"}, {SEMICOLON, ";"}, {AMP, "&"}, {DASH, "-"},
     {EQ, "="}, {HAT, "^"}, {PCENT, "%"}, {PIPE, "|"},
     {PLUS, "+"}, {SLASH, "/"}, {STAR, "*"}, {TILD, "~"},
-    {DEF, "def"}, {VAR, "var"}, {INT, "int"}, {PRINT, "print"}
+    {DEF, "def"}, {VAR, "var"}, {INT, "int"}, {PRINT, "print"},
+    {LTLT, "<<"}, {GTGT, ">>"}
 };
 
 inline const std::map<std::string, std::string> op_code = {
     {"&", "and"}, {"-", "sub"}, {"+", "add"}, {"*", "mul"},
     {"/", "div"}, {"^", "xor"}, {"%", "mod"}, {"|", "or"},
-    {"~", "neg"}
+    {"~", "neg"}, {"<<", "shl"}, {">>", "shr"}
 };
 
 }; // namespace Lexer
