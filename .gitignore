@@ -2,4 +2,6 @@
 *.d
 *.obj
 *.exe
+*.json
+*.s
 .vscode/*

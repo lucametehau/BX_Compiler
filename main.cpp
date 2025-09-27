@@ -11,9 +11,7 @@ int main(int argc, char** argv) {
     }
 
     const std::string filename(argv[1]);
-
     std::cout << "Hello! Lexing file " << filename << "...\n";
-
     std::ifstream in(filename);
 
     if (!in) {
@@ -31,12 +29,6 @@ int main(int argc, char** argv) {
     Lexer::Lexer lexer(get_file_content(in));
     auto tokens = lexer.tokenize();
 
-    for (auto &token : tokens) {
-        std::cout << token << " ";
-    }
-
-    std::cout << "\n";
-
     Parser::Parser parser(tokens);
     std::cout << "Parsing and building AST...\n";
     auto ast = Grammar::Blocks::Program::match(parser);
@@ -50,6 +42,8 @@ int main(int argc, char** argv) {
 
     MM::MM muncher;
     auto instr = ast->munch(muncher);
-    muncher.jsonify("temp.tac.json", instr);
+
+    std::string file_prefix = filename.substr(0, filename.find("."));
+    muncher.jsonify(file_prefix + ".tac.json", instr);
     return 0;
 }
