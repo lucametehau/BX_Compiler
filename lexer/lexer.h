@@ -14,7 +14,7 @@ private:
 
 public:
     Lexer() = default;
-    Lexer(std::string &src) : pos(0), src(src) {}
+    Lexer(std::string &&src) : pos(0), src(std::move(src)) {}
 
     ~Lexer() = default;
 

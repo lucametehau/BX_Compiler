@@ -3,8 +3,7 @@
 #include <string>
 #include <cassert>
 #include <vector>
-#pragma message(">>> NEW mm.h is being compiled <<<")
-
+#include "tac.h"
 
 namespace MM {
 
@@ -47,6 +46,23 @@ public:
 
     [[nodiscard]] std::string new_temp()  {
         return "%" + std::to_string(temp_ind++);
+    }
+
+    void jsonify(std::string filename, std::vector<TAC>& instructions) {
+        std::ofstream out(filename);
+        std::string tab;
+        out << "[\n";
+        tab += "  ";
+        out << tab << "{\n";
+        tab += "  ";
+        out << tab << "\"proc\": \"@main\",\n";
+        out << tab << "\"body\": [\n";
+        tab += "  ";
+        for (auto &t : instructions)
+            out << tab << t << ",\n";
+        out << "    ]\n";
+        out << "  }\n";
+        out << "]\n";
     }
 };
 

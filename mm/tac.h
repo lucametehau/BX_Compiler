@@ -3,7 +3,6 @@
 #include <vector>
 #include <string>
 #include <cassert>
-#pragma message(">>> NEW tac.h is being compiled <<<")
 
 
 class TAC {
@@ -19,16 +18,18 @@ public:
     }
 
     friend std::ostream& operator << (std::ostream& os, TAC& tac) {
-        os << "{'opcode': '" << tac["opcode"][0] << "', 'args': [";
+        os << "{\"opcode\": \"" << tac["opcode"][0] << "\", \"args\": [";
         for (std::size_t i = 0; i + 1 < tac["args"].size(); i++)
-            os << "'" << tac["args"][i] << "', ";
-        if (!tac["args"].empty())
-            os << "'" << tac["args"].back() << "'";
-        os << "], 'result': ";
-        if (tac["result"].empty())
-            os << "None";
+            os << "\"" << tac["args"][i] << "\", ";
+        if (!tac["args"].empty() && tac["args"].back()[0] == '%')
+            os << "\"" << tac["args"].back() << "\"";
         else
-            os << "'" << tac["result"][0] << "'";
+            os << std::stoi(tac["args"].back());
+        os << "], \"result\": ";
+        if (tac["result"].empty())
+            os << "null";
+        else
+            os << "\"" << tac["result"][0] << "\"";
         os << "}";
         return os;
     } 

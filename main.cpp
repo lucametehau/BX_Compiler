@@ -21,14 +21,14 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    std::ostringstream oss;
-    oss << in.rdbuf();
+    auto get_file_content = [&](std::ifstream& in) {
+        std::ostringstream oss;
+        oss << in.rdbuf();
+        return oss.str();
+    };
+    
 
-    std::string file_content = oss.str();
-
-    std::cout << file_content << "\n";
-
-    Lexer::Lexer lexer(file_content);
+    Lexer::Lexer lexer(get_file_content(in));
     auto tokens = lexer.tokenize();
 
     for (auto &token : tokens) {
@@ -50,7 +50,6 @@ int main(int argc, char** argv) {
 
     MM::MM muncher;
     auto instr = ast->munch(muncher);
-    for (auto &t : instr)
-        std::cout << t << "\n";
+    muncher.jsonify("temp.tac.json", instr);
     return 0;
 }
