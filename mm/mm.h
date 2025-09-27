@@ -29,11 +29,11 @@ public:
 };
 
 class MM {
-    int temp_ind;
+    int temp_ind, label_ind;
     std::vector<Scope> scopes;
 
 public:
-    MM() : temp_ind(0) {}
+    MM() : temp_ind(0), label_ind(0) {}
 
     void push_scope() { scopes.emplace_back(); }
 
@@ -46,6 +46,10 @@ public:
 
     [[nodiscard]] std::string new_temp()  {
         return "%" + std::to_string(temp_ind++);
+    }
+
+    [[nodiscard]] std::string new_label()  {
+        return ".L%" + std::to_string(label_ind++);
     }
 
     void jsonify(std::string filename, std::vector<TAC>& instructions) {

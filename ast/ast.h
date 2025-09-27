@@ -5,6 +5,8 @@
 #include <vector>
 #include <memory>
 #include <cstdint>
+#include <variant>
+#include <optional>
 
 namespace AST {
 
@@ -14,6 +16,7 @@ struct AST {
     virtual void print(std::ostream& os, int spaces = 0) const = 0;
     
     virtual std::vector<TAC> munch(MM::MM& muncher) const = 0;
+    // virtual std::vector<TAC> munch(MM::MM& muncher, std::string label_true, std::string label_false) const = 0;
 };
 
 template<typename T, typename = std::enable_if_t<std::is_base_of_v<AST, T>>> // wtf
@@ -91,6 +94,25 @@ struct BinOpExpression : Expression {
 };
 
 /*
+Bool Expressions
+*/
+
+
+struct BoolExpression : Expression {
+    bool value;
+
+    BoolExpression(bool value) : value(value) {}
+
+    void print(std::ostream& os, int spaces = 0) const override {
+        os << std::string(2 * spaces, ' ') << "[BOOL] " << value << "\n";
+    }
+
+    [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher) const override = 0;
+    
+    [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher, std::string label_true, std::string label_false) const;
+};
+
+/*
 Statements
 */
 struct Statement : AST {
@@ -142,7 +164,7 @@ struct Print : Statement {
 };
 
 /*
-Special rules
+Block
 */
 struct Block : AST {
     std::vector<std::unique_ptr<Statement>> statements;
@@ -161,6 +183,47 @@ struct Block : AST {
     [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher) const override;
 };
 
+/*
+If Else
+*/
+
+
+struct IfElse : Statement {
+    std::unique_ptr<BoolExpression> expr;
+    std::unique_ptr<Block> then_branch;
+    std::optional<std::variant<std::unique_ptr<IfElse>, std::unique_ptr<Block>>> else_branch;
+    
+    IfElse(std::unique_ptr<BoolExpression> expr, std::unique_ptr<Block> then_branch) 
+            : expr(std::move(expr)), then_branch(std::move(then_branch)) {}
+    IfElse(std::unique_ptr<BoolExpression> expr, std::unique_ptr<Block> then_branch,
+           std::unique_ptr<IfElse> else_branch) : expr(std::move(expr)), then_branch(std::move(then_branch)), else_branch(std::move(else_branch)) {}
+    IfElse(std::unique_ptr<BoolExpression> expr, std::unique_ptr<Block> then_branch,
+           std::unique_ptr<Block> else_branch) : expr(std::move(expr)), then_branch(std::move(then_branch)), else_branch(std::move(else_branch)) {}
+
+    void print(std::ostream& os, int spaces = 0) const override {
+        os << std::string(2 * spaces, ' ') << "[If]\n";
+        if (expr)
+            expr->print(os, spaces + 1);
+        os << std::string(2 * spaces, ' ') << "[Then]\n";
+        if (then_branch)
+            then_branch->print(os, spaces + 1);
+
+        // wtf have i gotten myself into
+        if (else_branch.has_value()) {
+            os << std::string(2 * spaces, ' ') << "[Else]\n";
+            std::visit([&](auto& p){
+                if (p)
+                    p->print(os, spaces + 1);
+            }, else_branch.value());
+        }
+    }
+
+    [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher) const override;
+};
+
+/*
+Program
+*/
 struct Program : Block {
     std::unique_ptr<Block> block;
 

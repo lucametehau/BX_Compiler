@@ -1,4 +1,5 @@
 #include "statement.h"
+#include "conditional.h"
 
 namespace Grammar::Statements {
 
@@ -8,6 +9,8 @@ std::unique_ptr<AST::Statement> Statement::match(Parser::Parser& parser) {
     if (auto stmt = Assign::match(parser))
         return stmt;
     if (auto stmt = Print::match(parser))
+        return stmt;
+    if (auto stmt = IfElse::match(parser))
         return stmt;
 
     return nullptr;

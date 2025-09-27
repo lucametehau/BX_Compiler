@@ -8,10 +8,11 @@ namespace Lexer {
 
 enum Type {
     IDENT, NUMBER, 
-    DEF, VAR, INT, PRINT,
+    DEF, VAR, INT, BOOL, PRINT, IF, ELSE,
     LPAREN, RPAREN, LBRACE, RBRACE, COLON, SEMICOLON,
-    AMP, DASH, EQ, HAT, PCENT, PIPE, PLUS, SLASH, 
-    STAR, TILD, LTLT, GTGT,
+    DASH, EQ, PCENT, PLUS, SLASH, STAR,
+    TILD, AMP, LTLT, GTGT, HAT, PIPE,
+    EQEQ, NEQ, LT, LTE, GT, GTE, ANDAND, OROR, NOT,
     END
 };
 
@@ -26,9 +27,17 @@ struct Operator {
 };
 
 inline const std::map<Type, Operator> operators = {
+    {Type::OROR, {3, Associativity::LEFT}},
+    {Type::ANDAND, {6, Associativity::LEFT}},
     {Type::PIPE, {10, Associativity::LEFT}},
     {Type::HAT, {20, Associativity::LEFT}},
     {Type::AMP, {30, Associativity::LEFT}},
+    {Type::EQEQ, {33, Associativity::NONE}},
+    {Type::NEQ, {33, Associativity::NONE}},
+    {Type::LT, {36, Associativity::LEFT}},
+    {Type::LTE, {36, Associativity::LEFT}},
+    {Type::GT, {36, Associativity::LEFT}},
+    {Type::GTE, {36, Associativity::LEFT}},
     {Type::LTLT, {40, Associativity::LEFT}},
     {Type::GTGT, {40, Associativity::LEFT}},
     {Type::PLUS, {50, Associativity::LEFT}},
@@ -76,7 +85,10 @@ inline const std::map<std::string, Type> lexing_tokens = {
     {"=", EQ}, {"^", HAT}, {"%", PCENT}, {"|", PIPE},
     {"+", PLUS}, {"/", SLASH}, {"*", STAR}, {"~", TILD},
     {"def", DEF}, {"var", VAR}, {"int", INT}, {"print", PRINT},
-    {"<<", LTLT}, {">>", GTGT}
+    {"true", BOOL}, {"false", BOOL}, {"if", IF}, {"else", ELSE},
+    {"<<", LTLT}, {">>", GTGT}, {"==", EQEQ}, {"!=", NEQ},
+    {"<", LT}, {"<=", LTE}, {">", GT}, {">=", GTE},
+    {"&&", ANDAND}, {"||", OROR}, {"!", NOT},
 };
 
 inline const std::map<Type, std::string> text_of_token = {
@@ -85,7 +97,10 @@ inline const std::map<Type, std::string> text_of_token = {
     {EQ, "="}, {HAT, "^"}, {PCENT, "%"}, {PIPE, "|"},
     {PLUS, "+"}, {SLASH, "/"}, {STAR, "*"}, {TILD, "~"},
     {DEF, "def"}, {VAR, "var"}, {INT, "int"}, {PRINT, "print"},
-    {LTLT, "<<"}, {GTGT, ">>"}
+    {LTLT, "<<"}, {GTGT, ">>"}, {EQEQ, "=="}, {NEQ, "!="},
+    {LT, "<"}, {LTE, "<="}, {GT, ">"}, {GTE, ">="},
+    {ANDAND, "&&"}, {OROR, "||"}, {NOT, "!"}, {IF, "if"},
+    {ELSE, "else"}
 };
 
 inline const std::map<std::string, std::string> op_code = {

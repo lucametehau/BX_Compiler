@@ -48,6 +48,13 @@ Expressions
 }
 
 /*
+Bool Expression
+*/
+[[nodiscard]] std::vector<TAC> BoolExpression::munch(MM::MM& muncher, std::string label_true, std::string label_false) {
+    return {};
+}
+
+/*
 Statements
 */
 
@@ -83,7 +90,7 @@ Statements
 }
 
 /*
-Special Rules
+Block
 */
 [[nodiscard]] std::vector<TAC> Block::munch(MM::MM& muncher) const {
     std::vector<TAC> instr;
@@ -99,6 +106,65 @@ Special Rules
     return instr;
 }
 
+/*
+If Else
+*/
+[[nodiscard]] std::vector<TAC> IfElse::munch(MM::MM& muncher) const {
+    auto label_then = muncher.new_label(), label_end = muncher.new_label();
+    TAC tac;
+    if (!else_branch.has_value()) {
+        auto expr_munch = expr->munch(muncher, label_then, label_end);
+        auto then_munch = then_branch->munch(muncher);
+        tac["opcode"] = { "label" };
+        tac["args"] = { label_then };
+        tac["result"] = {};
+        expr_munch.push_back(tac);
+        for (auto &t : then_munch)
+            expr_munch.push_back(t);
+        tac["opcode"] = { "label" };
+        tac["args"] = { label_end };
+        tac["result"] = {};
+        expr_munch.push_back(tac);
+        return expr_munch;
+    }
+
+    auto label_else = muncher.new_label();
+    auto expr_munch = expr->munch(muncher, label_then, label_else);
+    auto then_munch = then_branch->munch(muncher);
+    auto else_munch = std::visit([&](auto& p) {
+        return p ? p->munch(muncher) : std::vector<TAC>{};
+    }, else_branch.value());
+
+    // if
+    tac["opcode"] = { "label" };
+    tac["args"] = { label_then };
+    tac["result"] = {};
+    expr_munch.push_back(tac);
+    for (auto &t : then_munch)
+        expr_munch.push_back(t);
+    tac["opcode"] = { "jmp" };
+    tac["args"] = { label_end };
+    tac["result"] = {};
+
+    // else
+    expr_munch.push_back(tac);
+    tac["opcode"] = { "label" };
+    tac["args"] = { label_else };
+    tac["result"] = {};
+    expr_munch.push_back(tac);
+    expr_munch.push_back(tac);
+    for (auto &t : else_munch)
+        expr_munch.push_back(t);
+    tac["opcode"] = { "label" };
+    tac["args"] = { label_end };
+    tac["result"] = {};
+
+    return expr_munch;
+}
+
+/*
+Program
+*/
 [[nodiscard]] std::vector<TAC> Program::munch(MM::MM& muncher) const {
     return block->munch(muncher);
 }
