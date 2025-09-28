@@ -31,7 +31,7 @@ int main(int argc, char** argv) {
 
     Parser::Parser parser(tokens);
     std::cout << "Parsing and building AST...\n";
-    auto ast = Grammar::Blocks::Program::match(parser);
+    auto ast = Grammar::Statements::Program::match(parser);
 
     if (!ast) {
         throw std::runtime_error("Failed parsing file!");

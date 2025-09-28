@@ -229,6 +229,14 @@ Statements
     return expr_munch;
 }
 
+[[nodiscard]] std::vector<TAC> Jump::munch(MM::MM& muncher) {
+    TAC tac;
+    tac["opcode"] = { "jmp" };
+    tac["args"] = { token.is_type(Lexer::BREAK) ? muncher.get_break_point() : muncher.get_continue_point() };
+    tac["result"] = {};
+    return {tac};
+}
+
 /*
 Block
 */
@@ -314,6 +322,54 @@ If Else
     expr_munch.push_back(tac);
 
     return expr_munch;
+}
+
+/*
+While
+*/
+[[nodiscard]] std::vector<TAC> While::munch(MM::MM& muncher) {
+    auto label_start = muncher.new_label();
+    auto label_block = muncher.new_label();
+    auto label_end = muncher.new_label();
+
+    muncher.push_break_point(label_end);
+    muncher.push_continue_point(label_start);
+
+    TAC tac;
+    std::vector<TAC> instr;
+
+    tac["opcode"] = { "label" };
+    tac["args"] = { label_start };
+    tac["result"] = {};
+    instr.push_back(tac);
+
+    std::vector<TAC> expr_munch = expr->munch_bool(muncher, label_block, label_end);
+    for (auto &t : expr_munch)
+        instr.push_back(t);
+
+    tac["opcode"] = { "label" };
+    tac["args"] = { label_block };
+    tac["result"] = {};
+    instr.push_back(tac);
+
+    std::vector<TAC> block_munch = block->munch(muncher);
+    for (auto &t : block_munch)
+        instr.push_back(t);
+
+    tac["opcode"] = { "jmp" };
+    tac["args"] = { label_start };
+    tac["result"] = {};
+    instr.push_back(tac);
+
+    tac["opcode"] = { "label" };
+    tac["args"] = { label_end };
+    tac["result"] = {};
+    instr.push_back(tac);
+
+    muncher.pop_break_point();
+    muncher.pop_continue_point();
+
+    return instr;
 }
 
 /*
