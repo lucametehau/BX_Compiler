@@ -22,7 +22,7 @@ std::unique_ptr<AST::Statement> IfElse::match(Parser::Parser& parser) {
         return nullptr;
     parser.next();
 
-    auto then_branch = Blocks::Block::match(parser);
+    auto then_branch = Statements::Block::match(parser);
     if (!then_branch)
         return nullptr;
     
@@ -41,7 +41,7 @@ std::optional<std::unique_ptr<AST::Statement>> IfRest::match(Parser::Parser& par
         return ifelse;
     }
 
-    if (auto block = Blocks::Block::match(parser)) {
+    if (auto block = Statements::Block::match(parser)) {
         return block;
     }
 

@@ -189,6 +189,20 @@ struct Print : Statement {
     [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher) override;
 };
 
+struct Jump : Statement {
+    Lexer::Token token;
+
+    Jump(Lexer::Token token) : token(token) {}
+
+    [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher) override;
+
+    void print(std::ostream& os, int spaces = 0) override {
+        os << std::string(2 * spaces, ' ');
+        os << (token.is_type(Lexer::CONTINUE) ? "[Continue]" : "[Break]");
+        os << "\n";
+    }
+};
+
 /*
 Block
 */
@@ -212,8 +226,6 @@ struct Block : Statement {
 /*
 If Else
 */
-
-
 struct IfElse : Statement {
     std::unique_ptr<Expression> expr;
     std::unique_ptr<Block> then_branch;
@@ -241,6 +253,27 @@ struct IfElse : Statement {
     }
 
     [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher) override;
+};
+
+/*
+While
+*/
+struct While : Statement {
+    std::unique_ptr<Expression> expr;
+    std::unique_ptr<Block> block;
+
+    While(std::unique_ptr<Expression> expr, std::unique_ptr<Block> block) : expr(std::move(expr)), block(std::move(block)) {}
+
+    [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher) override;
+
+    void print(std::ostream& os, int spaces = 0) override {
+        os << std::string(2 * spaces, ' ') << "[While]\n";
+        if (expr)
+            expr->print(os, spaces + 1);
+        os << std::string(2 * spaces, ' ') << "[Do]\n";
+        if (block)
+            block->print(os, spaces + 1);
+    }
 };
 
 /*

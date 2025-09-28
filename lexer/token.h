@@ -9,7 +9,9 @@ namespace Lexer {
 
 enum Type {
     IDENT, NUMBER, 
-    DEF, VAR, INT, BOOL, PRINT, IF, ELSE,
+    DEF, VAR, INT, BOOL, PRINT, 
+    IF, ELSE,
+    WHILE, BREAK, CONTINUE,
     LPAREN, RPAREN, LBRACE, RBRACE, COLON, SEMICOLON,
     DASH, EQ, PCENT, PLUS, SLASH, STAR,
     TILD, AMP, LTLT, GTGT, HAT, PIPE,
@@ -92,6 +94,7 @@ inline const std::map<std::string, Type> lexing_tokens = {
     {"<<", LTLT}, {">>", GTGT}, {"==", EQEQ}, {"!=", NEQ},
     {"<", LT}, {"<=", LTE}, {">", GT}, {">=", GTE},
     {"&&", ANDAND}, {"||", OROR}, {"!", NOT},
+    {"while", WHILE}, {"break", BREAK}, {"continue", CONTINUE}
 };
 
 inline const std::map<Type, std::string> op_code = {

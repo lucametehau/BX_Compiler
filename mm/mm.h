@@ -32,13 +32,33 @@ public:
 class MM {
     int temp_ind, label_ind;
     std::vector<Scope> scopes;
+    std::vector<std::string> break_point_stack;
+    std::vector<std::string> continue_point_stack;
 
 public:
-    MM() : temp_ind(0), label_ind(0) {}
+    MM() : temp_ind(0), label_ind(0), break_point_stack({}), continue_point_stack({}) {}
 
     void push_scope() { scopes.emplace_back(); }
 
     void pop_scope() { scopes.pop_back(); }
+
+    void push_break_point(std::string& label) { break_point_stack.push_back(label); }
+
+    void push_continue_point(std::string& label) { continue_point_stack.push_back(label); }
+
+    void pop_break_point() { break_point_stack.pop_back(); }
+
+    void pop_continue_point() { continue_point_stack.pop_back(); }
+
+    [[nodiscard]] std::string get_break_point() const {
+        assert(!break_point_stack.empty());
+        return break_point_stack.back();
+    }
+
+    [[nodiscard]] std::string get_continue_point() const {
+        assert(!continue_point_stack.empty());
+        return continue_point_stack.back();
+    }
 
     Scope& scope() { 
         assert(!scopes.empty());
