@@ -3,6 +3,7 @@
 #include <string>
 #include <cassert>
 #include <vector>
+#include <iostream>
 #include "tac.h"
 
 namespace MM {
@@ -29,11 +30,11 @@ public:
 };
 
 class MM {
-    int temp_ind;
+    int temp_ind, label_ind;
     std::vector<Scope> scopes;
 
 public:
-    MM() : temp_ind(0) {}
+    MM() : temp_ind(0), label_ind(0) {}
 
     void push_scope() { scopes.emplace_back(); }
 
@@ -46,6 +47,26 @@ public:
 
     [[nodiscard]] std::string new_temp()  {
         return "%" + std::to_string(temp_ind++);
+    }
+
+    [[nodiscard]] std::string new_label()  {
+        return "%.L" + std::to_string(label_ind++);
+    }
+
+    [[nodiscard]] std::string get_temp(const std::string& name) const {
+        for (auto it = scopes.rbegin(); it != scopes.rend(); it++) {
+            if (it->is_declared(name))
+                return it->get_temp(name);
+        }
+        throw std::runtime_error("Variable " + name + " undeclared!");
+    }
+
+    [[nodiscard]] bool is_declared(const std::string& name) const {
+        for (auto it = scopes.rbegin(); it != scopes.rend(); it++) {
+            if (it->is_declared(name))
+                return true;
+        }
+        return false;
     }
 
     void jsonify(std::string filename, std::vector<TAC>& instructions) {

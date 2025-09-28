@@ -1,9 +1,103 @@
 def main() {
-    var x = 5 : int;
-    var y = 10 : int;
-    y = 2 * y + x * x % 2;
-    var z = 0 : int;
-    z = y >> 1;
-    print(y + 2 * x);
-    print(z);
+  if (!
+        !
+          (! (true && true && (true || true)) ||
+             ! false && false && false || ! ! false ||
+             (false && false || false && true || false || true || true || false)
+               && ! (false && true || ! false))
+        &&
+        ((! false && false && false || false && false && false && false) &&
+           ! (true && true) && (false || true || true || true) &&
+           ! ! (false && true) && ! ! (false || true) ||
+           ! ! (! true && true && false) ||
+             ! (true && false || ! false || ! (true || false))
+           ||
+           ! ! true && false && true && (false || false) &&
+             (! true && true && false || true && false && (true || false)) &&
+             (false && true || true && true) && (false || false || ! false) &&
+               ! (true && false || false && false)
+             &&
+             !
+               !
+                 ((false || false || true || true) &&
+                    (false && false || false && true)))
+        ||
+        !
+          (! (! true && ! false) &&
+             (! ! true || true && true && false && false))
+          && ! ! ! ((false || true) && ! true) ||
+          ! (false || true) || false && false && ! true ||
+            ! (false && true) || ! (false && true) ||
+            ! ! (false && false && false && false) ||
+            ! (! ! (true && true) || ! ((false || false) && false && false))
+          ||
+          (false && false || false && false) && ! (true || true) &&
+            (true && true && (false || false) || ! ! true) &&
+            ! ((true || true || ! true) && (true || false) && (true || false))
+            &&
+            !
+              ((true || false || false || false) && (true && true || ! false)
+                 && (false || true) && (true || true) && ! (false || false))
+            &&
+            ! (! ! false || ! false || ! true) &&
+              (false || true || ! false || ! (false || true)) &&
+                ! (true && false && (false || false))
+              &&
+              ! ! (false && false && ! false) &&
+                !
+                  ((! false || false || true) && (true || true) && true && true)
+        ||
+        !
+          (! ! ((true || false) && false && false || ! (true || false)) ||
+             true && false && (true || false) && ! (true && false) &&
+               ! (true || false) && false && true && true && true ||
+               (true || false || true || true || ! ! true) &&
+                 (false && true || ! false) && ! (true && false))
+          &&
+          ((! (true && false && (false || false) && (true && true || ! false))
+              || ! (true && false || true || false) || ! ! ! false)
+             &&
+             !
+               (true && false && true && true && false && false && ! true &&
+                  ! (true && false || false && true))
+             ||
+             (! (true || true || true || true) ||
+                (true || true || ! false) && ! (false && false))
+               &&
+               (! ! false && ! ! false ||
+                  ! false || ! true || true && false || ! true)
+               ||
+               !
+                 ((false || true || false && true) && ! (true && false) ||
+                    true && true || ! false || ! (false && true)))
+          ||
+          !
+            ((!
+                (true || false || true || true || true || true || false && true)
+                ||
+                (false && true || true || false || true || false || ! false) &&
+                  (! (true || false) || false || true || false && true))
+               &&
+               (false && true && false && false || ! false || ! false ||
+                  ! ! (true && true))
+                 &&
+                 ((! false || ! false) && (false || true) && (true || true) ||
+                    (true || false) && (false || false) ||
+                      false && true || ! true))
+            ||
+            ! ! (! true || false && false) &&
+              ! (! true && ! true || ! (true || false)) &&
+              (! (false && true) || ! (false && false) ||
+                 (true || false || false || false) &&
+                   (false || true) && false && false
+                 ||
+                 ! ! (true && true) &&
+                   ! (true || false) && (false || true) && (false || true))
+              ||
+              ! ! (! (! true || true && true) || ! (false || false || ! true)))
+  {
+    print(42);
+  } else {
+    print(-42);
+  }
 }

@@ -38,7 +38,9 @@ int main(int argc, char** argv) {
         return 1;
     }
 
+#ifdef DEBUG
     ast->print(std::cout);
+#endif
 
     MM::MM muncher;
     auto instr = ast->munch(muncher);

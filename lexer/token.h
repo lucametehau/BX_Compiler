@@ -3,15 +3,17 @@
 #include <map>
 #include <fstream>
 #include <cassert>
+#include <set>
 
 namespace Lexer {
 
 enum Type {
     IDENT, NUMBER, 
-    DEF, VAR, INT, PRINT,
+    DEF, VAR, INT, BOOL, PRINT, IF, ELSE,
     LPAREN, RPAREN, LBRACE, RBRACE, COLON, SEMICOLON,
-    AMP, DASH, EQ, HAT, PCENT, PIPE, PLUS, SLASH, 
-    STAR, TILD, LTLT, GTGT,
+    DASH, EQ, PCENT, PLUS, SLASH, STAR,
+    TILD, AMP, LTLT, GTGT, HAT, PIPE,
+    EQEQ, NEQ, LT, LTE, GT, GTE, ANDAND, OROR, NOT,
     END
 };
 
@@ -26,9 +28,17 @@ struct Operator {
 };
 
 inline const std::map<Type, Operator> operators = {
+    {Type::OROR, {3, Associativity::LEFT}},
+    {Type::ANDAND, {6, Associativity::LEFT}},
     {Type::PIPE, {10, Associativity::LEFT}},
     {Type::HAT, {20, Associativity::LEFT}},
     {Type::AMP, {30, Associativity::LEFT}},
+    {Type::EQEQ, {33, Associativity::NONE}},
+    {Type::NEQ, {33, Associativity::NONE}},
+    {Type::LT, {36, Associativity::LEFT}},
+    {Type::LTE, {36, Associativity::LEFT}},
+    {Type::GT, {36, Associativity::LEFT}},
+    {Type::GTE, {36, Associativity::LEFT}},
     {Type::LTLT, {40, Associativity::LEFT}},
     {Type::GTGT, {40, Associativity::LEFT}},
     {Type::PLUS, {50, Associativity::LEFT}},
@@ -54,6 +64,8 @@ public:
 
     [[nodiscard]] const std::string get_text() const { return text; }
 
+    [[nodiscard]] Type get_type() const { return type; }
+
     [[nodiscard]] int precedence() const {
         const auto it = operators.find(type);
         return it == operators.end() ? -1 : it->second.precedence; // force quit if non operator
@@ -76,22 +88,31 @@ inline const std::map<std::string, Type> lexing_tokens = {
     {"=", EQ}, {"^", HAT}, {"%", PCENT}, {"|", PIPE},
     {"+", PLUS}, {"/", SLASH}, {"*", STAR}, {"~", TILD},
     {"def", DEF}, {"var", VAR}, {"int", INT}, {"print", PRINT},
-    {"<<", LTLT}, {">>", GTGT}
+    {"true", BOOL}, {"false", BOOL}, {"if", IF}, {"else", ELSE},
+    {"<<", LTLT}, {">>", GTGT}, {"==", EQEQ}, {"!=", NEQ},
+    {"<", LT}, {"<=", LTE}, {">", GT}, {">=", GTE},
+    {"&&", ANDAND}, {"||", OROR}, {"!", NOT},
 };
 
-inline const std::map<Type, std::string> text_of_token = {
-    {LPAREN, "("}, {RPAREN, ")"}, {LBRACE, "{"}, {RBRACE, "}"},
-    {COLON, ":"}, {SEMICOLON, ";"}, {AMP, "&"}, {DASH, "-"},
-    {EQ, "="}, {HAT, "^"}, {PCENT, "%"}, {PIPE, "|"},
-    {PLUS, "+"}, {SLASH, "/"}, {STAR, "*"}, {TILD, "~"},
-    {DEF, "def"}, {VAR, "var"}, {INT, "int"}, {PRINT, "print"},
-    {LTLT, "<<"}, {GTGT, ">>"}
+inline const std::map<Type, std::string> op_code = {
+    {AMP, "and"}, {DASH, "sub"}, {PLUS, "add"}, {STAR, "mul"},
+    {SLASH, "div"}, {HAT, "xor"}, {PCENT, "mod"}, {PIPE, "or"},
+    {TILD, "neg"}, {LTLT, "shl"}, {GTGT, "shr"}
 };
 
-inline const std::map<std::string, std::string> op_code = {
-    {"&", "and"}, {"-", "sub"}, {"+", "add"}, {"*", "mul"},
-    {"/", "div"}, {"^", "xor"}, {"%", "mod"}, {"|", "or"},
-    {"~", "neg"}, {"<<", "shl"}, {">>", "shr"}
+inline const std::map<Type, std::string> jump_code = {
+    {EQEQ, "jz"}, {NEQ, "jnz"}, {LT, "jl"}, {LTE, "jle"}, 
+    {GT, "jg"}, {GTE, "jge"}
+};
+
+// binary operators
+inline const std::set<Type> bool_binary_operators = {
+    ANDAND, OROR, EQEQ, NEQ, LT, LTE, GT, GTE
+};
+
+// binary operators
+inline const std::set<Type> int_operators = {
+    PLUS, DASH, STAR, SLASH, PCENT, GTGT, LTLT, AMP, PIPE, HAT
 };
 
 }; // namespace Lexer
