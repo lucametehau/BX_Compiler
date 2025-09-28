@@ -24,7 +24,7 @@ void Lexer::skip_ws() {
     }
 
     // we have a lexing token
-    for (std::size_t len = 5; len >= 1; len--) {
+    for (std::size_t len = 10; len >= 1; len--) {
         if (pos + len - 1 >= src.size())
             continue;
         

@@ -1,7 +1,7 @@
 #include "block.h"
 #include <iostream>
 
-namespace Grammar::Blocks {
+namespace Grammar::Statements {
 
 std::unique_ptr<AST::Block> Block::match(Parser::Parser& parser) {
 #ifdef DEBUG

@@ -1,5 +1,7 @@
 #include "statement.h"
+#include "block.h"
 #include "conditional.h"
+#include "loop.h"
 
 namespace Grammar::Statements {
 
@@ -11,6 +13,12 @@ std::unique_ptr<AST::Statement> Statement::match(Parser::Parser& parser) {
     if (auto stmt = Print::match(parser))
         return stmt;
     if (auto stmt = IfElse::match(parser))
+        return stmt;
+    if (auto stmt = While::match(parser))
+        return stmt;
+    if (auto stmt = Jump::match(parser))
+        return stmt;
+    if (auto stmt = Block::match(parser))
         return stmt;
 
     return nullptr;
