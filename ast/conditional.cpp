@@ -13,7 +13,7 @@ std::unique_ptr<AST::Statement> IfElse::match(Parser::Parser& parser) {
         return nullptr;
     parser.next();
 
-    auto expr = Expressions::BoolExpression::match(parser);
+    auto expr = Expressions::Expression::match(parser);
     if (!expr)
         return nullptr;
 
@@ -32,22 +32,17 @@ std::unique_ptr<AST::Statement> IfElse::match(Parser::Parser& parser) {
     return std::make_unique<AST::IfElse>(std::move(expr), std::move(then_branch));
 }
 
-std::optional<std::variant<std::unique_ptr<AST::IfElse>, std::unique_ptr<AST::Block>>> IfRest::match(Parser::Parser& parser) {
+std::optional<std::unique_ptr<AST::Statement>> IfRest::match(Parser::Parser& parser) {
     if (!parser.expect(Lexer::ELSE))
         return std::nullopt;
     parser.next();
 
-    // what is this even????? will have to check later
     if (auto ifelse = IfElse::match(parser)) {
-        return std::variant<std::unique_ptr<AST::IfElse>, std::unique_ptr<AST::Block>>(
-            std::unique_ptr<AST::IfElse>(static_cast<AST::IfElse*>(ifelse.release()))
-        );
+        return ifelse;
     }
 
     if (auto block = Blocks::Block::match(parser)) {
-        return std::variant<std::unique_ptr<AST::IfElse>, std::unique_ptr<AST::Block>>(
-            std::unique_ptr<AST::Block>(static_cast<AST::Block*>(block.release()))
-        );
+        return block;
     }
 
     return std::nullopt;

@@ -3,6 +3,7 @@
 #include <string>
 #include <cassert>
 #include <vector>
+#include <iostream>
 #include "tac.h"
 
 namespace MM {
@@ -49,7 +50,23 @@ public:
     }
 
     [[nodiscard]] std::string new_label()  {
-        return ".L%" + std::to_string(label_ind++);
+        return "%.L" + std::to_string(label_ind++);
+    }
+
+    [[nodiscard]] std::string get_temp(const std::string& name) const {
+        for (auto it = scopes.rbegin(); it != scopes.rend(); it++) {
+            if (it->is_declared(name))
+                return it->get_temp(name);
+        }
+        throw std::runtime_error("Variable " + name + " undeclared!");
+    }
+
+    [[nodiscard]] bool is_declared(const std::string& name) const {
+        for (auto it = scopes.rbegin(); it != scopes.rend(); it++) {
+            if (it->is_declared(name))
+                return true;
+        }
+        return false;
     }
 
     void jsonify(std::string filename, std::vector<TAC>& instructions) {

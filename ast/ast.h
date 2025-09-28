@@ -10,17 +10,22 @@
 
 namespace AST {
 
+enum class Type {
+    INT,
+    BOOL,
+    NONE
+};
+
 struct AST {
     virtual ~AST() = default;
     
-    virtual void print(std::ostream& os, int spaces = 0) const = 0;
+    virtual void print(std::ostream& os, int spaces = 0) = 0;
     
-    virtual std::vector<TAC> munch(MM::MM& muncher) const = 0;
-    // virtual std::vector<TAC> munch(MM::MM& muncher, std::string label_true, std::string label_false) const = 0;
+    virtual std::vector<TAC> munch(MM::MM& muncher) = 0;
 };
 
 template<typename T, typename = std::enable_if_t<std::is_base_of_v<AST, T>>> // wtf
-inline std::ostream& operator << (std::ostream& os, const std::unique_ptr<AST>& ast) {
+inline std::ostream& operator << (std::ostream& os,  std::unique_ptr<AST>& ast) {
     if (ast)
         ast->print(os);
     return os;
@@ -31,58 +36,97 @@ Expressions
 */
 
 struct Expression : AST {
-    void print(std::ostream& os, int spaces = 0) const override = 0;
+protected:
+    Type type = Type::NONE;
 
-    [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher) const override = 0;
+public:
+    void print(std::ostream& os, int spaces = 0) override = 0;
+
+    [[nodiscard]] Type get_type() { return type; }
+
+    [[nodiscard]] virtual std::vector<TAC> munch(MM::MM& muncher) = 0;
+    [[nodiscard]] virtual std::vector<TAC> munch_bool([[maybe_unused]] MM::MM& muncher, 
+                                                      [[maybe_unused]] std::string label_true, 
+                                                      [[maybe_unused]] std::string label_false) {
+        throw std::runtime_error("munch_bool called on non-boolean expression");
+    }
 };
 
 struct NumberExpression : Expression {
     int64_t value;
 
-    NumberExpression(int64_t value) : value(value) {}
+    NumberExpression(int64_t value) : value(value) {
+        type = Type::INT;
+    }
 
-    void print(std::ostream& os, int spaces = 0) const override {
+    void print(std::ostream& os, int spaces = 0) override {
         os << std::string(2 * spaces, ' ') << "[NUMBER] " << value << "\n";
     }
 
-    [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher) const override;
+    [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher) override;    
 };
 
 struct IdentExpression : Expression {
     std::string name;
 
-    IdentExpression(std::string name) : name(name) {}
+    IdentExpression(std::string name) : name(name) {
+        type = Type::INT; // only int variables for now
+    }
 
-    void print(std::ostream& os, int spaces = 0) const override {
+    void print(std::ostream& os, int spaces = 0) override {
         os << std::string(2 * spaces, ' ') << "[IDENT] " << name << "\n";
     }
 
-    [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher) const override;
+    [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher) override;
+};
+
+struct BoolExpression : Expression {
+    bool value;
+
+    BoolExpression(std::string s_value) {
+        value = s_value == "true";
+        type = Type::BOOL;
+    }
+
+    void print(std::ostream& os, int spaces = 0) override {
+        os << std::string(2 * spaces, ' ') << "[BOOL] " << value << "\n";
+    }
+
+    [[nodiscard]] std::vector<TAC> munch([[maybe_unused]] MM::MM& muncher) override {
+        throw std::runtime_error("munch called on BoolExpression; use munch_bool instead");
+    }
+
+    [[nodiscard]] std::vector<TAC> munch_bool([[maybe_unused]] MM::MM& muncher, std::string label_true, std::string label_false) override;
 };
 
 struct UniOpExpression : Expression {
     Lexer::Token token;
     std::unique_ptr<Expression> expr;
 
-    UniOpExpression(Lexer::Token token, std::unique_ptr<Expression> expr) : token(token), expr(std::move(expr)) {}
+    UniOpExpression(Lexer::Token token, std::unique_ptr<Expression> _expr) : token(token), expr(std::move(_expr)) {
+        type = expr->get_type();
+    }
 
-    void print(std::ostream& os, int spaces = 0) const override {
+    void print(std::ostream& os, int spaces = 0) override {
         os << std::string(2 * spaces, ' ') << "[UniOp] " << token.get_text() << "\n";
         if (expr)
             expr->print(os, spaces + 1);
     }
 
-    [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher) const override;
+    [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher) override;
+    [[nodiscard]] std::vector<TAC> munch_bool(MM::MM& muncher, std::string label_true, std::string label_false) override;
 };
 
 struct BinOpExpression : Expression {
     Lexer::Token token;
     std::unique_ptr<Expression> left, right;
 
-    BinOpExpression(Lexer::Token token, std::unique_ptr<Expression> left, std::unique_ptr<Expression> right) 
-        : token(token), left(std::move(left)), right(std::move(right)) {}
+    BinOpExpression(Lexer::Token token, std::unique_ptr<Expression> _left, std::unique_ptr<Expression> _right) 
+        : token(token), left(std::move(_left)), right(std::move(_right)) {
+        type = left->get_type();
+    }
 
-    void print(std::ostream& os, int spaces = 0) const override {
+    void print(std::ostream& os, int spaces = 0) override {
         os << std::string(2 * spaces, ' ') << "[BinOp] " << token.get_text() << "\n";
         if (left)
             left->print(os, spaces + 1);
@@ -90,35 +134,17 @@ struct BinOpExpression : Expression {
             right->print(os, spaces + 1);
     }
 
-    [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher) const override;
-};
-
-/*
-Bool Expressions
-*/
-
-
-struct BoolExpression : Expression {
-    bool value;
-
-    BoolExpression(bool value) : value(value) {}
-
-    void print(std::ostream& os, int spaces = 0) const override {
-        os << std::string(2 * spaces, ' ') << "[BOOL] " << value << "\n";
-    }
-
-    [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher) const override = 0;
-    
-    [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher, std::string label_true, std::string label_false) const;
+    [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher) override;
+    [[nodiscard]] std::vector<TAC> munch_bool(MM::MM& muncher, std::string label_true, std::string label_false) override;
 };
 
 /*
 Statements
 */
 struct Statement : AST {
-    void print(std::ostream& os, int spaces = 0) const override = 0;
+    void print(std::ostream& os, int spaces = 0) override = 0;
 
-    [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher) const override = 0;
+    [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher) override = 0;
 };
 
 struct VarDecl : Statement {
@@ -126,13 +152,13 @@ struct VarDecl : Statement {
     std::unique_ptr<Expression> expr;
 
     VarDecl(std::string name, std::unique_ptr<Expression> expr) : name(name), expr(std::move(expr)) {}
-    void print(std::ostream& os, int spaces = 0) const override {
+    void print(std::ostream& os, int spaces = 0) override {
         os << std::string(2 * spaces, ' ') << "[VarDecl] " << name << " =\n";
         if (expr)
             expr->print(os, spaces + 1);
     }
 
-    [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher) const override;
+    [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher) override;
 };
 
 struct Assign : Statement {
@@ -140,13 +166,13 @@ struct Assign : Statement {
     std::unique_ptr<Expression> expr;
 
     Assign(std::string name, std::unique_ptr<Expression> expr) : name(name), expr(std::move(expr)) {}
-    void print(std::ostream& os, int spaces = 0) const override {
+    void print(std::ostream& os, int spaces = 0) override {
         os << std::string(2 * spaces, ' ') << "[Assign] " << name << " =\n";
         if (expr)
             expr->print(os, spaces + 1);
     }
 
-    [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher) const override;
+    [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher) override;
 };
 
 struct Print : Statement {
@@ -154,25 +180,25 @@ struct Print : Statement {
 
     Print(std::unique_ptr<Expression> expr) : expr(std::move(expr)) {}
 
-    void print(std::ostream& os, int spaces = 0) const override {
+    void print(std::ostream& os, int spaces = 0) override {
         os << std::string(2 * spaces, ' ') << "[Print]\n";
         if (expr)
             expr->print(os, spaces + 1);
     }
 
-    [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher) const override;
+    [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher) override;
 };
 
 /*
 Block
 */
-struct Block : AST {
+struct Block : Statement {
     std::vector<std::unique_ptr<Statement>> statements;
 
     Block() = default; // needed for Program
     Block(std::vector<std::unique_ptr<Statement>> statements) : statements(std::move(statements)) {}
 
-    void print(std::ostream& os, int spaces = 0) const override {
+    void print(std::ostream& os, int spaces = 0) override {
         os << std::string(2 * spaces, ' ') << "[Block]\n";
         for (auto &statement : statements) {
             if (statement)
@@ -180,7 +206,7 @@ struct Block : AST {
         }
     }
 
-    [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher) const override;
+    [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher) override;
 };
 
 /*
@@ -189,18 +215,17 @@ If Else
 
 
 struct IfElse : Statement {
-    std::unique_ptr<BoolExpression> expr;
+    std::unique_ptr<Expression> expr;
     std::unique_ptr<Block> then_branch;
-    std::optional<std::variant<std::unique_ptr<IfElse>, std::unique_ptr<Block>>> else_branch;
+    std::optional<std::unique_ptr<Statement>> else_branch;
     
-    IfElse(std::unique_ptr<BoolExpression> expr, std::unique_ptr<Block> then_branch) 
+    IfElse() = default;
+    IfElse(std::unique_ptr<Expression> expr, std::unique_ptr<Block> then_branch) 
             : expr(std::move(expr)), then_branch(std::move(then_branch)) {}
-    IfElse(std::unique_ptr<BoolExpression> expr, std::unique_ptr<Block> then_branch,
-           std::unique_ptr<IfElse> else_branch) : expr(std::move(expr)), then_branch(std::move(then_branch)), else_branch(std::move(else_branch)) {}
-    IfElse(std::unique_ptr<BoolExpression> expr, std::unique_ptr<Block> then_branch,
-           std::unique_ptr<Block> else_branch) : expr(std::move(expr)), then_branch(std::move(then_branch)), else_branch(std::move(else_branch)) {}
+    IfElse(std::unique_ptr<Expression> expr, std::unique_ptr<Block> then_branch,
+           std::unique_ptr<Statement> else_branch) : expr(std::move(expr)), then_branch(std::move(then_branch)), else_branch(std::move(else_branch)) {}
 
-    void print(std::ostream& os, int spaces = 0) const override {
+    void print(std::ostream& os, int spaces = 0) override {
         os << std::string(2 * spaces, ' ') << "[If]\n";
         if (expr)
             expr->print(os, spaces + 1);
@@ -211,14 +236,11 @@ struct IfElse : Statement {
         // wtf have i gotten myself into
         if (else_branch.has_value()) {
             os << std::string(2 * spaces, ' ') << "[Else]\n";
-            std::visit([&](auto& p){
-                if (p)
-                    p->print(os, spaces + 1);
-            }, else_branch.value());
+            else_branch.value()->print(os, spaces + 1);
         }
     }
 
-    [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher) const override;
+    [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher) override;
 };
 
 /*
@@ -229,13 +251,13 @@ struct Program : Block {
 
     Program(std::unique_ptr<Block> block) : block(std::move(block)) {}
 
-    void print(std::ostream& os, int spaces = 0) const override {
+    void print(std::ostream& os, int spaces = 0) override {
         os << std::string(2 * spaces, ' ') << "[Program]\n";
         if (block)
             block->print(os, spaces + 1);
     }
 
-    [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher) const override;
+    [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher) override;
 };
 
 }; // namespace AST

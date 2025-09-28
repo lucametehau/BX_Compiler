@@ -24,9 +24,11 @@ void Lexer::skip_ws() {
     }
 
     // we have a lexing token
-    std::string token_s;
-    for (std::size_t len = 1; len <= 5 && pos + len - 1 < src.size(); len++) {
-        token_s += src[pos + len - 1];
+    for (std::size_t len = 5; len >= 1; len--) {
+        if (pos + len - 1 >= src.size())
+            continue;
+        
+        auto token_s = src.substr(pos, len);
         if (const auto it = lexing_tokens.find(token_s); it != lexing_tokens.end()) {
             pos += len;
             return Token{it->second, token_s};

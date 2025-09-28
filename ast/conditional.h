@@ -8,7 +8,7 @@ struct IfElse {
 };
 
 struct IfRest {
-    static std::optional<std::variant<std::unique_ptr<AST::IfElse>, std::unique_ptr<AST::Block>>> match(Parser::Parser& parser);
+    static std::optional<std::unique_ptr<AST::Statement>> match(Parser::Parser& parser);
 };
 
 };

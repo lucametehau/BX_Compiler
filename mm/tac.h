@@ -3,6 +3,7 @@
 #include <vector>
 #include <string>
 #include <cassert>
+#include <iostream>
 
 
 class TAC {
@@ -23,7 +24,7 @@ public:
             os << "\"" << tac["args"][i] << "\", ";
         if (!tac["args"].empty() && tac["args"].back()[0] == '%')
             os << "\"" << tac["args"].back() << "\"";
-        else
+        else if (!tac["args"].empty())
             os << std::stoi(tac["args"].back());
         os << "], \"result\": ";
         if (tac["result"].empty())
