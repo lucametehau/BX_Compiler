@@ -3,6 +3,7 @@
 #include <sstream>
 #include "lexer/lexer.h"
 #include "ast/block.h"
+#include "asm/asm.h"
 
 int main(int argc, char** argv) {
     if (argc != 2) {
@@ -47,5 +48,9 @@ int main(int argc, char** argv) {
 
     std::string file_prefix = filename.substr(0, filename.find("."));
     muncher.jsonify(file_prefix + ".tac.json", instr);
+
+    std::ofstream asm_file(file_prefix + ".s");
+    ASM::Assembler assembler(instr);
+    assembler.assemble(asm_file);
     return 0;
 }
