@@ -20,7 +20,6 @@ public:
 private:
     std::string stack_register(std::string& temp) {
         assert(temp[0] == '%');
-        std::cout << temp.substr(1) << "\n";
         return "-" + std::to_string(8 * std::stoi(temp.substr(1))) + "(%rbp)";
     }
 

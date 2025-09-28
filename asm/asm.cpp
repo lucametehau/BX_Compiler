@@ -14,11 +14,12 @@ Assembler::Assembler(std::vector<TAC>& _instr) : instr(std::move(_instr)) {
         }
 
         if (!result.empty()) {
-            std::cout << result[0] << "\n";
             if (result[0][0] == '%' && result[0][1] != '.')
                 stack_size = std::max(stack_size, static_cast<std::size_t>(std::stoi(t["result"][0].substr(1))));
         }
     }
+
+    stack_size = (stack_size + 1) / 2 * 2;
 }
 
 void Assembler::assemble(std::ofstream& os) {
@@ -27,7 +28,7 @@ void Assembler::assemble(std::ofstream& os) {
     os << "main:\n";
     os << "\tpushq %rbp\n";
     os << "\tmovq %rsp, %rbp\n";
-    os << "\tsubq $-" << 8 * stack_size << ", %rsp\n";
+    os << "\tsubq $" << 8 * stack_size << ", %rsp\n";
 
     for (auto &t : instr) {
         assemble_instr(os, t);
@@ -46,7 +47,7 @@ void Assembler::assemble_instr(std::ofstream& os, TAC& tac) {
 
     if (op == "label") {
         assert(args.size() == 1);
-        os << args[0].substr(1) << "\n";
+        os << args[0].substr(1) << ":\n";
     }
     else if (op == "const") {
         assert(args.size() == 1 && result.size() == 1);
@@ -91,7 +92,7 @@ void Assembler::assemble_instr(std::ofstream& os, TAC& tac) {
     }
     else if (auto it = special_binops.find(op); it != special_binops.end()) {
         assert(args.size() == 2 && result.size() == 1);
-        it->second(args[0], args[1], result[0], os);
+        it->second(stack_register(args[0]), stack_register(args[1]), stack_register(result[0]), os);
     }
     else {
         throw std::runtime_error("Unrecognized operator " + op);
