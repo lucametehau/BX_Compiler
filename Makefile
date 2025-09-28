@@ -3,7 +3,7 @@ CXXFLAGS = -Wall -Wextra -std=c++20
 TARGET = main.exe
 
 ifeq ($(OS),Windows_NT)
-	SRC_TEMP = $(wildcard *.cpp) $(wildcard lexer/*.cpp) $(wildcard parser/*.cpp) $(wildcard ast/*.cpp)
+	SRC_TEMP = $(wildcard *.cpp) $(wildcard lexer/*.cpp) $(wildcard parser/*.cpp) $(wildcard ast/*.cpp) $(wildcard asm/*.cpp)
 	SRC = $(subst /,\,$(SRC_TEMP))
     OBJ = $(SRC:.cpp=.o)
     DEPS = $(OBJ:.o=.d)
@@ -14,7 +14,7 @@ ifeq ($(OS),Windows_NT)
 	FILES := $(subst $(space),$(comma) ,$(FILES_TEMP))
 	CLEAN_CMD := powershell "rm -Force $(FILES)"
 else
-    SRC = $(wildcard *.cpp) $(wildcard ./lexer/*.cpp) $(wildcard ./parser/*.cpp) $(wildcard ./ast/*.cpp)
+    SRC = $(wildcard *.cpp) $(wildcard ./lexer/*.cpp) $(wildcard ./parser/*.cpp) $(wildcard ./ast/*.cpp) $(wildcard ./asm/*.cpp)
     OBJ = $(SRC:.cpp=.o)
     DEPS = $(OBJ:.o=.d)
 	CLEAN_CMD := rm -f $(OBJ) $(TARGET) $(DEPS)
