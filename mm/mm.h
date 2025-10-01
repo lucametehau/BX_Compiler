@@ -60,7 +60,7 @@ public:
         return continue_point_stack.back();
     }
 
-    Scope& scope() { 
+    [[nodiscard]] Scope& scope() { 
         assert(!scopes.empty());
         return scopes.back();
     }

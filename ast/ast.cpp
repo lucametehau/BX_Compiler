@@ -9,34 +9,33 @@ Expressions
 */
 
 [[nodiscard]] std::vector<TAC> NumberExpression::munch(MM::MM& muncher) {
-    TAC tac;
-    tac["opcode"] = {"const"};
-    tac["args"] = { std::to_string(value) };
-    tac["result"] = { muncher.new_temp() };
     type = Type::INT;
-    return {tac};
+    return {TAC(
+        "const",
+        { std::to_string(value) },
+        muncher.new_temp()
+    )};
 }
 
 [[nodiscard]] std::vector<TAC> IdentExpression::munch(MM::MM& muncher) {
-    TAC tac;
-    tac["opcode"] = { "copy" };
-    tac["args"] = { muncher.get_temp(name) };
-    tac["result"] = { muncher.new_temp() };
-    return {tac};
+    return {TAC(
+        "copy",
+        { muncher.get_temp(name) },
+        muncher.new_temp()
+    )};
 }
 
 [[nodiscard]] std::vector<TAC> BoolExpression::munch_bool([[maybe_unused]] MM::MM& muncher, std::string label_true, std::string label_false) {
-    TAC tac;
-    tac["opcode"] = { "jmp"};
-    tac["args"] = {};
-    tac["result"] = { value ? label_true : label_false };
     type = Type::BOOL;
-    return {tac};
+    return {TAC(
+        "jmp",
+        {},
+        value ? label_true : label_false
+    )};
 }
 
 [[nodiscard]] std::vector<TAC> UniOpExpression::munch(MM::MM& muncher) {
     auto op = token.get_type();
-    TAC tac;
     std::vector<TAC> expr_munch = expr->munch(muncher);
     
 
@@ -52,10 +51,11 @@ Expressions
     }
     type = expr->get_type();
 
-    tac["opcode"] = { Lexer::op_code.find(op)->second };
-    tac["args"] = { expr_munch.back()["result"][0] }; // expression result stored in this
-    tac["result"] = { muncher.new_temp() };
-    expr_munch.push_back(tac);
+    expr_munch.push_back(TAC(
+        Lexer::op_code.find(op)->second,
+        { expr_munch.back().get_result() },
+        muncher.new_temp()
+    ));
 
     return expr_munch;
 }
@@ -79,7 +79,6 @@ Expressions
 
 [[nodiscard]] std::vector<TAC> BinOpExpression::munch(MM::MM& muncher) {
     auto op = token.get_type();
-    TAC tac;
     std::vector<TAC> left_munch = left->munch(muncher);
     std::vector<TAC> right_munch = right->munch(muncher);
 
@@ -96,13 +95,16 @@ Expressions
     }
     type = left->get_type();
 
-    tac["opcode"] = { Lexer::op_code.find(op)->second };
-    tac["args"] = { left_munch.back()["result"][0], right_munch.back()["result"][0] }; // expression result stored in this
-    tac["result"] = { muncher.new_temp() };
+    auto tl = left_munch.back().get_result(), tr = right_munch.back().get_result();
 
     for (auto &t : right_munch)
         left_munch.push_back(t);
-    left_munch.push_back(tac);
+    
+    left_munch.push_back(TAC(
+        Lexer::op_code.find(op)->second,
+        { tl, tr },
+        muncher.new_temp()
+    ));
     return left_munch;
 }
 
@@ -111,7 +113,6 @@ Expressions
     auto op = token.get_type();
 
     std::vector<TAC> left_munch, right_munch;
-    TAC tac;
 
     // short circuiting operators
     if (op == Lexer::ANDAND || op == Lexer::OROR)
@@ -134,10 +135,10 @@ Expressions
         }
         type = Type::BOOL;
         
-        tac["opcode"] = { "label" };
-        tac["args"] = { label };
-        tac["result"] = {};
-        left_munch.push_back(tac);
+        left_munch.push_back(TAC(
+            "label",
+            { label }
+        ));
         for (auto &t : right_munch)
             left_munch.push_back(t);
         return left_munch;
@@ -159,25 +160,28 @@ Expressions
     }
     type = Type::BOOL;
 
-    auto tl = left_munch.back()["result"][0], tr = right_munch.back()["result"][0];
+    auto tl = left_munch.back().get_result(), tr = right_munch.back().get_result();
 
     for (auto &t : right_munch)
         left_munch.push_back(t);
     
-    tac["opcode"] = { "sub" };
-    tac["args"] = { tl, tr };
-    tac["result"] = { tl };
-    left_munch.push_back(tac);
+    left_munch.push_back(TAC(
+        "sub",
+        { tl, tr },
+        tl
+    ));
 
-    tac["opcode"] = { Lexer::jump_code.find(op)->second };
-    tac["args"] = { tl };
-    tac["result"] = { label_true };
-    left_munch.push_back(tac);
+    left_munch.push_back(TAC(
+        Lexer::jump_code.find(op)->second,
+        { tl },
+        label_true
+    ));
 
-    tac["opcode"] = { "jmp" };
-    tac["args"] = {};
-    tac["result"] = { label_false };
-    left_munch.push_back(tac);
+    left_munch.push_back(TAC(
+        "jmp",
+        {},
+        label_false
+    ));
 
     return left_munch;
 }
@@ -195,46 +199,42 @@ Statements
     if (expr->get_type() != Type::INT)
         throw std::runtime_error("Expected Variable Declaration only for type 'int'!");
 
-    assert (!expr_munch.back()["result"].empty());
-    muncher.scope().declare(name, expr_munch.back()["result"][0]);
+    muncher.scope().declare(name, expr_munch.back().get_result());
     return expr_munch;
 }
 
 [[nodiscard]] std::vector<TAC> Assign::munch(MM::MM& muncher) {
-    TAC tac;
     std::vector<TAC> expr_munch = expr->munch(muncher);
 
     if (expr->get_type() != Type::INT)
         throw std::runtime_error("Expected Assign only for type 'int', since Variable Declaration is only available for 'int'!");
     
-    tac["opcode"] = { "copy" };
-    tac["args"] = { expr_munch.back()["result"][0] };
-    tac["result"] = { muncher.get_temp(name) };
-    expr_munch.push_back(tac);
+    expr_munch.push_back(TAC(
+        "copy",
+        { expr_munch.back().get_result() },
+        muncher.get_temp(name)
+    ));
     return expr_munch;
 }
 
 [[nodiscard]] std::vector<TAC> Print::munch(MM::MM& muncher) {
-    
-    TAC tac;
     std::vector<TAC> expr_munch = expr->munch(muncher);
 
     if (expr->get_type() != Type::INT)
         throw std::runtime_error("Expected Print only for type 'int'!");
 
-    tac["opcode"] = { "print" };
-    tac["args"] = { expr_munch.back()["result"][0] };
-    tac["result"] = { };
-    expr_munch.push_back(tac);
+    expr_munch.push_back(TAC(
+        "print",
+        { expr_munch.back().get_result() }
+    ));
     return expr_munch;
 }
 
 [[nodiscard]] std::vector<TAC> Jump::munch(MM::MM& muncher) {
-    TAC tac;
-    tac["opcode"] = { "jmp" };
-    tac["args"] = { token.is_type(Lexer::BREAK) ? muncher.get_break_point() : muncher.get_continue_point() };
-    tac["result"] = {};
-    return {tac};
+    return {TAC(
+        "jmp",
+        { token.is_type(Lexer::BREAK) ? muncher.get_break_point() : muncher.get_continue_point() }
+    )};
 }
 
 /*
@@ -260,23 +260,25 @@ If Else
 [[nodiscard]] std::vector<TAC> IfElse::munch(MM::MM& muncher) {
     auto label_then = muncher.new_label();
     auto label_end = muncher.new_label();
-    TAC tac;
     if (!else_branch.has_value()) {
         auto expr_munch = expr->munch_bool(muncher, label_then, label_end);
         if (expr->get_type() != Type::BOOL)
             throw std::runtime_error("Expected condition of type 'bool' in 'if'!");
         
         auto then_munch = then_branch->munch(muncher);
-        tac["opcode"] = { "label" };
-        tac["args"] = { label_then };
-        tac["result"] = {};
-        expr_munch.push_back(tac);
+        
+        expr_munch.push_back(TAC(
+            "label", 
+            { label_then }
+        ));
+
         for (auto &t : then_munch)
             expr_munch.push_back(t);
-        tac["opcode"] = { "label" };
-        tac["args"] = { label_end };
-        tac["result"] = {};
-        expr_munch.push_back(tac);
+        
+        expr_munch.push_back(TAC(
+            "label",
+            { label_end }
+        ));
         return expr_munch;
     }
 
@@ -294,32 +296,32 @@ If Else
     auto else_munch = else_branch.value()->munch(muncher);
 
     // if
-    tac["opcode"] = { "label" };
-    tac["args"] = { label_then };
-    tac["result"] = {};
-    expr_munch.push_back(tac);
+    expr_munch.push_back(TAC(
+        "label",
+        { label_then }
+    ));
 
     for (auto &t : then_munch)
         expr_munch.push_back(t);
     
-    tac["opcode"] = { "jmp" };
-    tac["args"] = { label_end };
-    tac["result"] = {};
-    expr_munch.push_back(tac);
+    expr_munch.push_back(TAC(
+        "jmp",
+        { label_end }
+    ));
 
     // else
-    tac["opcode"] = { "label" };
-    tac["args"] = { label_else };
-    tac["result"] = {};
-    expr_munch.push_back(tac);
+    expr_munch.push_back(TAC(
+        "label",
+        { label_else }
+    ));
 
     for (auto &t : else_munch)
         expr_munch.push_back(t);
     
-    tac["opcode"] = { "label" };
-    tac["args"] = { label_end };
-    tac["result"] = {};
-    expr_munch.push_back(tac);
+    expr_munch.push_back(TAC(
+        "label",
+        { label_end }
+    ));
 
     return expr_munch;
 }
@@ -335,36 +337,35 @@ While
     muncher.push_break_point(label_end);
     muncher.push_continue_point(label_start);
 
-    TAC tac;
     std::vector<TAC> instr;
 
-    tac["opcode"] = { "label" };
-    tac["args"] = { label_start };
-    tac["result"] = {};
-    instr.push_back(tac);
+    instr.push_back(TAC(
+        "label",
+        { label_start }
+    ));
 
     std::vector<TAC> expr_munch = expr->munch_bool(muncher, label_block, label_end);
     for (auto &t : expr_munch)
         instr.push_back(t);
 
-    tac["opcode"] = { "label" };
-    tac["args"] = { label_block };
-    tac["result"] = {};
-    instr.push_back(tac);
+    instr.push_back(TAC(
+        "label",
+        { label_block }
+    ));
 
     std::vector<TAC> block_munch = block->munch(muncher);
     for (auto &t : block_munch)
         instr.push_back(t);
 
-    tac["opcode"] = { "jmp" };
-    tac["args"] = { label_start };
-    tac["result"] = {};
-    instr.push_back(tac);
+    instr.push_back(TAC(
+        "jmp",
+        { label_start }
+    ));
 
-    tac["opcode"] = { "label" };
-    tac["args"] = { label_end };
-    tac["result"] = {};
-    instr.push_back(tac);
+    instr.push_back(TAC(
+        "label",
+        { label_end }
+    ));
 
     muncher.pop_break_point();
     muncher.pop_continue_point();
