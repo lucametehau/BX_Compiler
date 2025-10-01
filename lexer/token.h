@@ -54,11 +54,12 @@ class Token {
 private:
     Type type;
     std::string text;
+    std::size_t row, col;
 
 public:
     Token() = default;
-    Token(Type type, const char* text) : type(type), text(text) {}
-    Token(Type type, const std::string text) : type(type), text(text) {}
+    Token(Type type, const char* text, std::size_t row, std::size_t col) : type(type), text(text), row(row), col(col) {}
+    Token(Type type, const std::string text, std::size_t row, std::size_t col) : type(type), text(text), row(row), col(col) {}
 
     [[nodiscard]] constexpr bool is_type(Type _type) const { return type == _type; }
 
@@ -67,6 +68,10 @@ public:
     [[nodiscard]] const std::string get_text() const { return text; }
 
     [[nodiscard]] Type get_type() const { return type; }
+
+    [[nodiscard]] std::size_t get_row() const { return row; }
+
+    [[nodiscard]] std::size_t get_col() const { return col; }
 
     [[nodiscard]] int precedence() const {
         const auto it = operators.find(type);

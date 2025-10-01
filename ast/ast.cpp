@@ -1,6 +1,7 @@
 #include "ast.h"
 #include <cassert>
 #include <iostream>
+#include <format>
 
 namespace AST {
 
@@ -84,14 +85,21 @@ Expressions
 
     // type checking
     if (left->get_type() != right->get_type()) {
-        throw std::runtime_error("Binary Operator expected expressions of same types!");
+        throw std::runtime_error(std::format(
+            "Error at row {}, col {}! Binary Operator {} expected expressions of same types!", token.get_row(), token.get_col(), token.get_text()
+        ));
     }
     if (Lexer::bool_binary_operators.find(op) != Lexer::bool_binary_operators.end()) {
-        throw std::runtime_error("Expected 'int' type binary operator, got 'bool' operator!");
+        throw std::runtime_error(std::format(
+            "Error at row {}, col {}! Expected 'int' type binary operator, got {}!", token.get_row(), token.get_col(), token.get_text()
+        ));
     }
     else {
-        if (left->get_type() != Type::INT)
-            throw std::runtime_error("Binary operator " + token.get_text() + " expected type 'int' expression!");
+        if (left->get_type() != Type::INT) {
+            throw std::runtime_error(std::format(
+                "Error at row {}, col {}! Binary Operator {} expected type 'int' expression!", token.get_row(), token.get_col(), token.get_text()
+            ));
+        }
     }
     type = left->get_type();
 
@@ -124,14 +132,21 @@ Expressions
         
         // type checking
         if (left->get_type() != right->get_type()) {
-            throw std::runtime_error("Binary Operator expected expressions of same types!");
+            throw std::runtime_error(std::format(
+                "Error at row {}, col {}! Binary Operator {} expected expressions of same types!", token.get_row(), token.get_col(), token.get_text()
+            ));
         }
         if (Lexer::bool_binary_operators.find(op) != Lexer::bool_binary_operators.end()) {
-            if (left->get_type() != Type::BOOL)
-                throw std::runtime_error("Binary operator " + token.get_text() + " expected type 'bool' expression!");
+            if (left->get_type() != Type::BOOL) {
+                throw std::runtime_error(std::format(
+                    "Error at row {}, col {}! Binary Operator {} expected type 'bool' expression!", token.get_row(), token.get_col(), token.get_text()
+                ));
+            }
         }
         else {
-            throw std::runtime_error("Expected 'bool' type binary operator!");
+            throw std::runtime_error(std::format(
+                "Error at row {}, col {}! Expected 'bool' type binary operator!", token.get_row(), token.get_col()
+            ));
         }
         type = Type::BOOL;
         
@@ -149,14 +164,21 @@ Expressions
 
     // type checking
     if (left->get_type() != right->get_type()) {
-        throw std::runtime_error("Binary Operator expected expressions of same types!");
+        throw std::runtime_error(std::format(
+            "Error at row {}, col {}! Binary Operator {} expected expressions of same types!", token.get_row(), token.get_col(), token.get_text()
+        ));
     }
     if (Lexer::bool_binary_operators.find(op) != Lexer::bool_binary_operators.end()) {
-        if (left->get_type() != Type::INT)
-            throw std::runtime_error("Binary operator " + token.get_text() + " expected type 'int' expression!");
+        if (left->get_type() != Type::INT) {
+            throw std::runtime_error(std::format(
+                "Error at row {}, col {}! Binary Operator {} expected type 'int' expression!", token.get_row(), token.get_col(), token.get_text()
+            ));
+        }
     }
     else {
-        throw std::runtime_error("Expected 'bool' type binary operator!");
+        throw std::runtime_error(std::format(
+            "Error at row {}, col {}! Expected 'bool' type binary operator, got {}!", token.get_row(), token.get_col(), token.get_text()
+        ));
     }
     type = Type::BOOL;
 
@@ -289,6 +311,7 @@ If Else
 #endif
 
     auto expr_munch = expr->munch_bool(muncher, label_then, label_else);
+    std::cout << "In if else " << static_cast<int>(expr->get_type()) << "\n";
     if (expr->get_type() != Type::BOOL)
         throw std::runtime_error("Expected condition of type 'bool' in 'if'!");
     

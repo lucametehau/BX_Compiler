@@ -4,23 +4,33 @@
 namespace Lexer {
 
 void Lexer::skip_ws() {
-    while (pos < src.size() && whitespaces.find(src[pos]) != std::string::npos)
+    while (pos < src.size() && whitespaces.find(src[pos]) != std::string::npos) {
+        if (src[pos] == '\n')
+            row++, col = 1;
+        else if (src[pos] == '\t')
+            col += 4;
+        else
+            col++;
         pos++;
+    }
 }
 
 [[nodiscard]] Token Lexer::next() {
     skip_ws();
     if (pos >= src.size())
-        return Token{Type::END, ""};
+        return Token{Type::END, "", row, col};
+
+    const auto start_pos = pos;
+    const auto start_col = col;
 
     // number
     if ((pos + 1 < src.size() && src[pos] == '-' && isdigit(src[pos + 1])) || isdigit(src[pos])) {
-        const auto start_pos = pos;
         if (src[pos] == '-')
-            pos++;
+            pos++, col++;
         while (pos < src.size() && isdigit(src[pos])) 
-            pos++;
-        return Token{Type::NUMBER, src.substr(start_pos, pos - start_pos)};
+            pos++, col++;
+        
+        return Token{Type::NUMBER, src.substr(start_pos, pos - start_pos), row, start_col};
     }
 
     // we have a lexing token
@@ -31,16 +41,16 @@ void Lexer::skip_ws() {
         auto token_s = src.substr(pos, len);
         if (const auto it = lexing_tokens.find(token_s); it != lexing_tokens.end()) {
             pos += len;
-            return Token{it->second, token_s};
+            col += len;
+            return Token{it->second, token_s, row, start_col};
         }
     }
 
     // identifier
-    const auto start_pos = pos;
     while (pos < src.size() && (isalpha(src[pos]) || isdigit(src[pos]) || src[pos] == '_'))
-        pos++;
+        pos++, col++;
 
-    return Token{Type::IDENT, src.substr(start_pos, pos - start_pos)};
+    return Token{Type::IDENT, src.substr(start_pos, pos - start_pos), row, start_col};
 }
 
 [[nodiscard]] std::vector<Token> Lexer::tokenize() {

@@ -48,7 +48,7 @@ public:
     [[nodiscard]] virtual std::vector<TAC> munch_bool([[maybe_unused]] MM::MM& muncher, 
                                                       [[maybe_unused]] std::string label_true, 
                                                       [[maybe_unused]] std::string label_false) {
-        throw std::runtime_error("munch_bool called on non-boolean expression");
+        return {};
     }
 };
 
@@ -93,7 +93,7 @@ struct BoolExpression : Expression {
     }
 
     [[nodiscard]] std::vector<TAC> munch([[maybe_unused]] MM::MM& muncher) override {
-        throw std::runtime_error("munch called on BoolExpression; use munch_bool instead");
+        return {};
     }
 
     [[nodiscard]] std::vector<TAC> munch_bool([[maybe_unused]] MM::MM& muncher, std::string label_true, std::string label_false) override;

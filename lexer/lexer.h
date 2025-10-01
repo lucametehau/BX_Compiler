@@ -10,11 +10,12 @@ class Lexer {
 private:
     static constexpr std::string_view whitespaces{" \t\n"};
     std::size_t pos;
+    std::size_t row, col;
     std::string src;
 
 public:
     Lexer() = default;
-    Lexer(std::string &&src) : pos(0), src(std::move(src)) {}
+    Lexer(std::string &&src) : pos(0), row(1), col(1), src(std::move(src)) {}
 
     ~Lexer() = default;
 

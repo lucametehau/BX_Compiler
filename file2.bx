@@ -1,12 +1,6 @@
 def main() {
   var c = 837799 : int;
-  while (true) {
+  if (3 == 3 == 3) {
     print(c);
-    if (c == 1) { break; }
-    if (c % 2 == 0) {
-      c = c / 2;
-    } else {
-      c = 3 * c + 1;
-    }
   }
 }

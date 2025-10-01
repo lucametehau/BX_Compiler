@@ -35,8 +35,7 @@ int main(int argc, char** argv) {
     auto ast = Grammar::Statements::Program::match(parser);
 
     if (!ast) {
-        throw std::runtime_error("Failed parsing file!");
-        return 1;
+        throw std::runtime_error("Parser failed!");
     }
 
 #ifdef DEBUG
