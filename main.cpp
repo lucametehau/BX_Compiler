@@ -4,6 +4,7 @@
 #include "lexer/lexer.h"
 #include "ast/block.h"
 #include "asm/asm.h"
+#include "optimizations/cfg.h"
 
 int main(int argc, char** argv) {
     if (argc != 2) {
@@ -12,6 +13,7 @@ int main(int argc, char** argv) {
     }
 
     const std::string filename(argv[1]);
+    const std::string file_prefix = filename.substr(0, filename.find("."));
     std::cout << "Hello! Lexing file " << filename << "...\n";
     std::ifstream in(filename);
 
@@ -45,11 +47,19 @@ int main(int argc, char** argv) {
     MM::MM muncher;
     auto instr = ast->munch(muncher);
 
-    std::string file_prefix = filename.substr(0, filename.find("."));
     muncher.jsonify(file_prefix + ".tac.json", instr);
 
     std::ofstream asm_file(file_prefix + ".s");
     ASM::Assembler assembler(instr);
     assembler.assemble(asm_file);
+
+    auto cfg = Opt::CFG();
+    cfg.make_cfg(instr);
+
+    cfg.uce();
+
+    std::vector<TAC> new_instr = cfg.make_tac();
+
+    muncher.jsonify(file_prefix + ".opt.tac.json", new_instr);
     return 0;
 }

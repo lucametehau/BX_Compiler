@@ -311,7 +311,6 @@ If Else
 #endif
 
     auto expr_munch = expr->munch_bool(muncher, label_then, label_else);
-    std::cout << "In if else " << static_cast<int>(expr->get_type()) << "\n";
     if (expr->get_type() != Type::BOOL)
         throw std::runtime_error("Expected condition of type 'bool' in 'if'!");
     
@@ -400,7 +399,26 @@ While
 Program
 */
 [[nodiscard]] std::vector<TAC> Program::munch(MM::MM& muncher) {
-    return block->munch(muncher);
+    std::vector<TAC> instr;
+    instr.push_back(TAC(
+        "label",
+        { muncher.new_label() }
+    ));
+    
+    std::vector<TAC> block_instr = block->munch(muncher);
+    for (auto &t : block_instr)
+        instr.push_back(t);
+    
+    instr.push_back(TAC(
+        "const",
+        { std::to_string(0) },
+        muncher.new_temp()
+    ));
+    instr.push_back(TAC(
+        "ret",
+        { instr.back().get_result() }
+    ));
+    return instr;
 }
 
 

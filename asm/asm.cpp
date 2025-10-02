@@ -2,7 +2,7 @@
 
 namespace ASM {
 
-Assembler::Assembler(std::vector<TAC>& _instr) : instr(std::move(_instr)) {
+Assembler::Assembler(std::vector<TAC>& _instr) : instr(_instr) {
     stack_size = 0;
     for (auto &t : instr) {
         auto args = t.get_args();
@@ -92,6 +92,9 @@ void Assembler::assemble_instr(std::ofstream& os, TAC& tac) {
     else if (auto it = special_binops.find(op); it != special_binops.end()) {
         assert(args.size() == 2 && tac.has_result());
         it->second(stack_register(args[0]), stack_register(args[1]), stack_register(tac.get_result()), os);
+    }
+    else if (op == "ret") {
+        // nothing for now, will see
     }
     else {
         throw std::runtime_error("Unrecognized operator " + op);
