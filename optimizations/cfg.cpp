@@ -152,4 +152,8 @@ void CFG::jt_seq_uncond() {
     }
 }
 
+void CFG::jt_cond_to_uncond() {
+    
+}
+
 };

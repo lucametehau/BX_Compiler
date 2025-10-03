@@ -60,6 +60,8 @@ public:
     // Jump Threading: Sequencing Unconditional Jumps
     void jt_seq_uncond();
 
+    // Jump Threading: Turning Conditional into Unconditional Jumps
+    void jt_cond_to_uncond();
 };
 
 };
