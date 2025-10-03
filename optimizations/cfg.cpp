@@ -117,8 +117,9 @@ void CFG::uce() {
 }
 
 void CFG::jt_seq_uncond() {
-    while (true) {
-        bool found = false;
+    bool found_chain = true;
+    while (found_chain) {
+        found_chain = false;
         for (auto &block : blocks) {
             auto label = block.get_label();
             // std::cout << label << "\n";
@@ -138,17 +139,15 @@ void CFG::jt_seq_uncond() {
                         // std::cout << "Found useless connexion between " << label << ", " << child_node << ", " << target_label << "\n";
                         // std::cout << child << " now\n";
                         // return;
-                        found = true;
+                        found_chain = true;
                         break;
                     }
                 }
             }
-            if (found) break;
+            if (found_chain) break;
         }
 
-        if (!found)
-            return;
-
+        // cleanup (maybe not needed every time?)
         uce();
     }
 }
