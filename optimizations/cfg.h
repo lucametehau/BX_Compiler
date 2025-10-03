@@ -2,20 +2,21 @@
 #include "../mm/tac.h"
 #include <set>
 #include <cassert>
+#include <memory>
 
 namespace Opt {
 
 class Block {
 private:
-    std::vector<TAC> instr;
+    std::vector<std::shared_ptr<TAC>> instr;
     std::string label;
-    std::vector<TAC> jumps; 
+    std::vector<std::shared_ptr<TAC>> jumps; 
 
 public:
     Block() = default;
-    Block(std::vector<TAC>& instr);
+    Block(std::vector<std::shared_ptr<TAC>>& instr);
 
-    [[nodiscard]] std::vector<TAC> get_jumps() {
+    [[nodiscard]] std::vector<std::shared_ptr<TAC>> get_jumps() {
         return jumps;
     }
 
@@ -23,7 +24,7 @@ public:
         return label;
     }
 
-    [[nodiscard]] std::vector<TAC>& get_instr() {
+    [[nodiscard]] std::vector<std::shared_ptr<TAC>>& get_instr() {
         return instr;
     }
 };
@@ -31,8 +32,7 @@ public:
 class CFG {
 private:
     std::vector<Block> blocks;
-    std::map<std::string, std::vector<std::pair<std::string, TAC>>> graph;
-    std::map<std::string, 
+    std::map<std::string, std::map<std::string, std::shared_ptr<TAC>>> graph;
 
     [[nodiscard]] std::vector<Block> make_blocks(std::vector<TAC>& instr);
 

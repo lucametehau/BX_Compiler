@@ -50,6 +50,40 @@ inline const std::map<Type, Operator> operators = {
     {Type::PCENT, {60, Associativity::LEFT}},
 };
 
+inline const std::map<std::string, Type> lexing_tokens = {
+    {"(", LPAREN}, {")", RPAREN}, {"{", LBRACE}, {"}", RBRACE},
+    {":", COLON}, {";", SEMICOLON}, {"&", AMP}, {"-", DASH},
+    {"=", EQ}, {"^", HAT}, {"%", PCENT}, {"|", PIPE},
+    {"+", PLUS}, {"/", SLASH}, {"*", STAR}, {"~", TILD},
+    {"def", DEF}, {"var", VAR}, {"int", INT}, {"print", PRINT},
+    {"true", BOOL}, {"false", BOOL}, {"if", IF}, {"else", ELSE},
+    {"<<", LTLT}, {">>", GTGT}, {"==", EQEQ}, {"!=", NEQ},
+    {"<", LT}, {"<=", LTE}, {">", GT}, {">=", GTE},
+    {"&&", ANDAND}, {"||", OROR}, {"!", NOT},
+    {"while", WHILE}, {"break", BREAK}, {"continue", CONTINUE}
+};
+
+inline const std::map<Type, std::string> op_code = {
+    {AMP, "and"}, {DASH, "sub"}, {PLUS, "add"}, {STAR, "mul"},
+    {SLASH, "div"}, {HAT, "xor"}, {PCENT, "mod"}, {PIPE, "or"},
+    {TILD, "neg"}, {LTLT, "shl"}, {GTGT, "shr"}
+};
+
+inline const std::map<Type, std::string> jump_code = {
+    {EQEQ, "jz"}, {NEQ, "jnz"}, {LT, "jl"}, {LTE, "jle"}, 
+    {GT, "jg"}, {GTE, "jge"}
+};
+
+// binary operators
+inline const std::set<Type> bool_binary_operators = {
+    ANDAND, OROR, EQEQ, NEQ, LT, LTE, GT, GTE
+};
+
+// binary operators
+inline const std::set<Type> int_operators = {
+    PLUS, DASH, STAR, SLASH, PCENT, GTGT, LTLT, AMP, PIPE, HAT
+};
+
 class Token {
 private:
     Type type;
@@ -87,40 +121,6 @@ public:
         os << "(" << token.type << ", " << token.text << "), ";
         return os;
     }
-};
-
-inline const std::map<std::string, Type> lexing_tokens = {
-    {"(", LPAREN}, {")", RPAREN}, {"{", LBRACE}, {"}", RBRACE},
-    {":", COLON}, {";", SEMICOLON}, {"&", AMP}, {"-", DASH},
-    {"=", EQ}, {"^", HAT}, {"%", PCENT}, {"|", PIPE},
-    {"+", PLUS}, {"/", SLASH}, {"*", STAR}, {"~", TILD},
-    {"def", DEF}, {"var", VAR}, {"int", INT}, {"print", PRINT},
-    {"true", BOOL}, {"false", BOOL}, {"if", IF}, {"else", ELSE},
-    {"<<", LTLT}, {">>", GTGT}, {"==", EQEQ}, {"!=", NEQ},
-    {"<", LT}, {"<=", LTE}, {">", GT}, {">=", GTE},
-    {"&&", ANDAND}, {"||", OROR}, {"!", NOT},
-    {"while", WHILE}, {"break", BREAK}, {"continue", CONTINUE}
-};
-
-inline const std::map<Type, std::string> op_code = {
-    {AMP, "and"}, {DASH, "sub"}, {PLUS, "add"}, {STAR, "mul"},
-    {SLASH, "div"}, {HAT, "xor"}, {PCENT, "mod"}, {PIPE, "or"},
-    {TILD, "neg"}, {LTLT, "shl"}, {GTGT, "shr"}
-};
-
-inline const std::map<Type, std::string> jump_code = {
-    {EQEQ, "jz"}, {NEQ, "jnz"}, {LT, "jl"}, {LTE, "jle"}, 
-    {GT, "jg"}, {GTE, "jge"}
-};
-
-// binary operators
-inline const std::set<Type> bool_binary_operators = {
-    ANDAND, OROR, EQEQ, NEQ, LT, LTE, GT, GTE
-};
-
-// binary operators
-inline const std::set<Type> int_operators = {
-    PLUS, DASH, STAR, SLASH, PCENT, GTGT, LTLT, AMP, PIPE, HAT
 };
 
 }; // namespace Lexer

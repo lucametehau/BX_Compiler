@@ -56,7 +56,7 @@ int main(int argc, char** argv) {
     auto cfg = Opt::CFG();
     cfg.make_cfg(instr);
 
-    cfg.uce();
+    cfg.jt_seq_uncond();
 
     std::vector<TAC> new_instr = cfg.make_tac();
 

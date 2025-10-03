@@ -255,7 +255,8 @@ Statements
 [[nodiscard]] std::vector<TAC> Jump::munch(MM::MM& muncher) {
     return {TAC(
         "jmp",
-        { token.is_type(Lexer::BREAK) ? muncher.get_break_point() : muncher.get_continue_point() }
+        {},
+        token.is_type(Lexer::BREAK) ? muncher.get_break_point() : muncher.get_continue_point()
     )};
 }
 
@@ -328,7 +329,8 @@ If Else
     
     expr_munch.push_back(TAC(
         "jmp",
-        { label_end }
+        {},
+        label_end
     ));
 
     // else
@@ -381,7 +383,8 @@ While
 
     instr.push_back(TAC(
         "jmp",
-        { label_start }
+        {},
+        label_start
     ));
 
     instr.push_back(TAC(
