@@ -3,6 +3,10 @@
 
 namespace Grammar::Statements {
 
+struct VarInit {
+    static std::unique_ptr<AST::Statement> match(Parser::Parser& parser);
+};
+
 struct VarDecl {
     static std::unique_ptr<AST::Statement> match(Parser::Parser& parser);
 };
@@ -16,6 +20,10 @@ struct Print {
 };
 
 struct Statement {
+    static std::unique_ptr<AST::Statement> match(Parser::Parser& parser);
+};
+
+struct ProcDecl {
     static std::unique_ptr<AST::Statement> match(Parser::Parser& parser);
 };
 

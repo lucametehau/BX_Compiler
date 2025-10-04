@@ -147,29 +147,61 @@ struct Statement : AST {
     [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher) override = 0;
 };
 
-struct VarDecl : Statement {
+struct VarInit : Statement {
     std::string name;
     std::unique_ptr<Expression> expr;
 
-    VarDecl(std::string name, std::unique_ptr<Expression> expr) : name(name), expr(std::move(expr)) {}
+    VarInit(std::string name, std::unique_ptr<Expression> expr) : name(name), expr(std::move(expr)) {}
     void print(std::ostream& os, int spaces = 0) override {
-        os << std::string(2 * spaces, ' ') << "[VarDecl] " << name << " =\n";
+        os << std::string(2 * spaces, ' ') << "[VarInit] " << name << " =\n";
         if (expr)
             expr->print(os, spaces + 1);
+    }
+
+    [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher) override {
+        throw "xd\n";
+    }
+};
+
+struct Param : Statement {
+    std::string name;
+    Lexer::Token type;
+
+    Param(std::string name, Lexer::Token type) : name(name), type(type) {}
+
+    void print(std::ostream& os, int spaces = 0) override {
+        os << std::string(2 * spaces, ' ') << "[Param] " << name << " : " << type.get_text() << "\n";
+    }
+
+    [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher) override {
+        throw "lol\n";
+    }
+};
+
+struct VarDecl : Statement {
+    std::vector<std::unique_ptr<Statement>> var_inits;
+    Lexer::Token type;
+
+    VarDecl(std::vector<std::unique_ptr<Statement>> var_inits, Lexer::Token type) : var_inits(std::move(var_inits)), type(std::move(type)) {}
+    void print(std::ostream& os, int spaces = 0) override {
+        os << std::string(2 * spaces, ' ') << "[VarDecl] Type " << type.get_text() << "\n";
+        for (auto &init : var_inits) {
+            if (init)
+                init->print(os, spaces + 1);
+        }
     }
 
     [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher) override;
 };
 
 struct Assign : Statement {
-    std::string name;
-    std::unique_ptr<Expression> expr;
+    std::unique_ptr<Statement> var_init;
 
-    Assign(std::string name, std::unique_ptr<Expression> expr) : name(name), expr(std::move(expr)) {}
+    Assign(std::unique_ptr<Statement> var_init) : var_init(std::move(var_init)) {}
     void print(std::ostream& os, int spaces = 0) override {
-        os << std::string(2 * spaces, ' ') << "[Assign] " << name << " =\n";
-        if (expr)
-            expr->print(os, spaces + 1);
+        os << std::string(2 * spaces, ' ') << "[Assign]\n";
+        if (var_init)
+            var_init->print(os, spaces + 1);
     }
 
     [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher) override;
@@ -277,17 +309,43 @@ struct While : Statement {
 };
 
 /*
+Procedures
+*/
+struct ProcDecl : Statement {
+    Lexer::Token name;
+    std::vector<std::unique_ptr<Statement>> params;
+    std::unique_ptr<Block> block;
+
+    ProcDecl(Lexer::Token name, std::vector<std::unique_ptr<Statement>> params, std::unique_ptr<Block> block) 
+        : name(name), params(std::move(params)), block(std::move(block)) {}
+
+    void print(std::ostream& os, int spaces = 0) override {
+        os << std::string(2 * spaces, ' ') << "[Procedure] " << name.get_text() << "\n";
+        for (auto &param : params) {
+            if (param)
+                param->print(os, spaces + 1);
+        }
+        if (block)
+            block->print(os, spaces + 2);
+    }
+
+    [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher) override;
+};
+
+/*
 Program
 */
 struct Program : Block {
-    std::unique_ptr<Block> block;
+    std::vector<std::unique_ptr<Statement>> declarations;
 
-    Program(std::unique_ptr<Block> block) : block(std::move(block)) {}
+    Program(std::vector<std::unique_ptr<Statement>> declarations) : declarations(std::move(declarations)) {}
 
     void print(std::ostream& os, int spaces = 0) override {
         os << std::string(2 * spaces, ' ') << "[Program]\n";
-        if (block)
-            block->print(os, spaces + 1);
+        for (auto &declaration : declarations) {
+            if (declaration)
+                declaration->print(os, spaces + 1);
+        }
     }
 
     [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher) override;

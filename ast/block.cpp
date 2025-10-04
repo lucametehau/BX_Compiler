@@ -24,27 +24,17 @@ std::unique_ptr<AST::Block> Block::match(Parser::Parser& parser) {
 }
 
 std::unique_ptr<AST::Program> Program::match(Parser::Parser& parser) {
-    if (!parser.expect(Lexer::DEF))
-        return nullptr;
-    parser.next();
+    std::vector<std::unique_ptr<AST::Statement>> declarations;
+    while (true) {
+        if (auto stmt = Statements::VarDecl::match(parser))
+            declarations.push_back(std::move(stmt));
+        else if (auto stmt = Statements::ProcDecl::match(parser))
+            declarations.push_back(std::move(stmt));
+        else
+            break;
+    }
 
-    if (!parser.expect(Lexer::IDENT) || parser.peek().get_text() != "main")
-        return nullptr;
-    parser.next();
-
-    if (!parser.expect(Lexer::LPAREN))
-        return nullptr;
-    parser.next();
-
-    if (!parser.expect(Lexer::RPAREN))
-        return nullptr;
-    parser.next();
-
-    auto block = Block::match(parser);
-    if (!block)
-        return nullptr;
-
-    return std::make_unique<AST::Program>(std::move(block));
+    return std::make_unique<AST::Program>(std::move(declarations));
 }
 
 };

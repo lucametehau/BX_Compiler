@@ -1,4 +1,5 @@
 #include "ast.h"
+#include "../utils/utils.h"
 #include <cassert>
 #include <iostream>
 #include <format>
@@ -105,8 +106,7 @@ Expressions
 
     auto tl = left_munch.back().get_result(), tr = right_munch.back().get_result();
 
-    for (auto &t : right_munch)
-        left_munch.push_back(t);
+    utils::concat(left_munch, right_munch);
     
     left_munch.push_back(TAC(
         Lexer::op_code.find(op)->second,
@@ -184,8 +184,7 @@ Expressions
 
     auto tl = left_munch.back().get_result(), tr = right_munch.back().get_result();
 
-    for (auto &t : right_munch)
-        left_munch.push_back(t);
+    utils::concat(left_munch, right_munch);
     
     left_munch.push_back(TAC(
         "sub",
@@ -214,29 +213,30 @@ Statements
 
 [[nodiscard]] std::vector<TAC> VarDecl::munch(MM::MM& muncher) {
     
-    std::vector<TAC> expr_munch = expr->munch(muncher);
-    if (muncher.is_declared(name))
-        throw std::runtime_error("Variable " + name + " already declared\n");
+    // std::vector<TAC> expr_munch = expr->munch(muncher);
+    // if (muncher.is_declared(name))
+    //     throw std::runtime_error("Variable " + name + " already declared\n");
         
-    if (expr->get_type() != Type::INT)
-        throw std::runtime_error("Expected Variable Declaration only for type 'int'!");
+    // if (expr->get_type() != Type::INT)
+    //     throw std::runtime_error("Expected Variable Declaration only for type 'int'!");
 
-    muncher.scope().declare(name, expr_munch.back().get_result());
-    return expr_munch;
+    // muncher.scope().declare(name, expr_munch.back().get_result());
+    // return expr_munch;
+    return {};
 }
 
 [[nodiscard]] std::vector<TAC> Assign::munch(MM::MM& muncher) {
-    std::vector<TAC> expr_munch = expr->munch(muncher);
+    // std::vector<TAC> expr_munch = expr->munch(muncher);
 
-    if (expr->get_type() != Type::INT)
-        throw std::runtime_error("Expected Assign only for type 'int', since Variable Declaration is only available for 'int'!");
+    // if (expr->get_type() != Type::INT)
+    //     throw std::runtime_error("Expected Assign only for type 'int', since Variable Declaration is only available for 'int'!");
     
-    expr_munch.push_back(TAC(
-        "copy",
-        { expr_munch.back().get_result() },
-        muncher.get_temp(name)
-    ));
-    return expr_munch;
+    // expr_munch.push_back(TAC(
+    //     "copy",
+    //     { expr_munch.back().get_result() },
+    //     muncher.get_temp(name)
+    // ));
+    return {};
 }
 
 [[nodiscard]] std::vector<TAC> Print::munch(MM::MM& muncher) {
@@ -269,8 +269,7 @@ Block
     muncher.push_scope();
     for (auto &stmt : statements) {
         auto stmt_munch = stmt->munch(muncher);
-        for (auto &t : stmt_munch)
-            instr.push_back(t);
+        utils::concat(instr, stmt_munch);
     }
     muncher.pop_scope();
 
@@ -295,8 +294,7 @@ If Else
             { label_then }
         ));
 
-        for (auto &t : then_munch)
-            expr_munch.push_back(t);
+        utils::concat(expr_munch, then_munch);
         
         expr_munch.push_back(TAC(
             "label",
@@ -324,8 +322,7 @@ If Else
         { label_then }
     ));
 
-    for (auto &t : then_munch)
-        expr_munch.push_back(t);
+    utils::concat(expr_munch, then_munch);
     
     expr_munch.push_back(TAC(
         "jmp",
@@ -339,8 +336,7 @@ If Else
         { label_else }
     ));
 
-    for (auto &t : else_munch)
-        expr_munch.push_back(t);
+    utils::concat(expr_munch, else_munch);
     
     expr_munch.push_back(TAC(
         "label",
@@ -369,8 +365,8 @@ While
     ));
 
     std::vector<TAC> expr_munch = expr->munch_bool(muncher, label_block, label_end);
-    for (auto &t : expr_munch)
-        instr.push_back(t);
+
+    utils::concat(instr, expr_munch);
 
     instr.push_back(TAC(
         "label",
@@ -378,8 +374,8 @@ While
     ));
 
     std::vector<TAC> block_munch = block->munch(muncher);
-    for (auto &t : block_munch)
-        instr.push_back(t);
+
+    utils::concat(instr, block_munch);
 
     instr.push_back(TAC(
         "jmp",
@@ -399,28 +395,26 @@ While
 }
 
 /*
+Procedures
+*/
+[[nodiscard]] std::vector<TAC> ProcDecl::munch(MM::MM& muncher) {
+    return {};
+}
+
+/*
 Program
 */
 [[nodiscard]] std::vector<TAC> Program::munch(MM::MM& muncher) {
     std::vector<TAC> instr;
-    instr.push_back(TAC(
-        "label",
-        { muncher.new_label() }
-    ));
     
-    std::vector<TAC> block_instr = block->munch(muncher);
-    for (auto &t : block_instr)
-        instr.push_back(t);
+    // global scope
+    muncher.push_scope();
     
-    instr.push_back(TAC(
-        "const",
-        { std::to_string(0) },
-        muncher.new_temp()
-    ));
-    instr.push_back(TAC(
-        "ret",
-        { instr.back().get_result() }
-    ));
+    for (auto &declaration : declarations) {
+        auto decl_munch = declaration->munch(muncher);
+        utils::concat(instr, decl_munch);
+    }
+
     return instr;
 }
 

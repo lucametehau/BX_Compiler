@@ -44,30 +44,30 @@ int main(int argc, char** argv) {
     ast->print(std::cout);
 #endif
 
-    MM::MM muncher;
-    auto instr = ast->munch(muncher);
+    // MM::MM muncher;
+    // auto instr = ast->munch(muncher);
 
-    muncher.jsonify(file_prefix + ".tac.json", instr);
+    // muncher.jsonify(file_prefix + ".tac.json", instr);
 
-    auto cfg = Opt::CFG();
-    cfg.make_cfg(instr);
+    // auto cfg = Opt::CFG();
+    // cfg.make_cfg(instr);
 
-    for (int i = 1; i <= 10; i++) {
-        cfg.jt_seq_uncond();
+    // for (int i = 1; i <= 10; i++) {
+    //     cfg.jt_seq_uncond();
 
-        std::vector<TAC> new_instr = cfg.make_tac();
+    //     std::vector<TAC> new_instr = cfg.make_tac();
 
-        std::ofstream asm_file(file_prefix + ".s");
-        ASM::Assembler assembler(new_instr);
-        assembler.assemble(asm_file);
+    //     std::ofstream asm_file(file_prefix + ".s");
+    //     ASM::Assembler assembler(new_instr);
+    //     assembler.assemble(asm_file);
 
-        muncher.jsonify(file_prefix + ".opt1.tac.json", new_instr);
+    //     muncher.jsonify(file_prefix + ".opt1.tac.json", new_instr);
 
-        cfg.jt_cond_to_uncond();
+    //     cfg.jt_cond_to_uncond();
 
-        std::vector<TAC> new_new_instr = cfg.make_tac();
+    //     std::vector<TAC> new_new_instr = cfg.make_tac();
 
-        muncher.jsonify(file_prefix + ".opt2.tac.json", new_new_instr);
-    }
+    //     muncher.jsonify(file_prefix + ".opt2.tac.json", new_new_instr);
+    // }
     return 0;
 }
