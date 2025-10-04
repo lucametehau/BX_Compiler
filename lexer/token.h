@@ -56,7 +56,7 @@ inline const std::map<std::string, Type> lexing_tokens = {
     {"=", EQ}, {"^", HAT}, {"%", PCENT}, {"|", PIPE},
     {"+", PLUS}, {"/", SLASH}, {"*", STAR}, {"~", TILD},
     {"def", DEF}, {"var", VAR}, {"int", INT}, {"print", PRINT},
-    {"true", BOOL}, {"false", BOOL}, {"if", IF}, {"else", ELSE},
+    {"bool", BOOL}, {"true", BOOL}, {"false", BOOL}, {"if", IF}, {"else", ELSE},
     {"<<", LTLT}, {">>", GTGT}, {"==", EQEQ}, {"!=", NEQ},
     {"<", LT}, {"<=", LTE}, {">", GT}, {">=", GTE},
     {"&&", ANDAND}, {"||", OROR}, {"!", NOT},
