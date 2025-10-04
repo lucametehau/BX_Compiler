@@ -1,6 +1,0 @@
-def main() {
-  var c = 837799 : int;
-  if (3 == 3) {
-    print(c);
-  }
-}

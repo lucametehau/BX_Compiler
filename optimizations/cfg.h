@@ -33,6 +33,7 @@ class CFG {
 private:
     std::vector<Block> blocks;
     std::map<std::string, std::map<std::string, std::shared_ptr<TAC>>> graph;
+    std::map<std::string, std::string> original_temp;
 
     [[nodiscard]] std::vector<Block> make_blocks(std::vector<TAC>& instr);
 
@@ -45,13 +46,12 @@ public:
 
     [[nodiscard]] std::vector<TAC> make_tac();
 
-    [[nodiscard]] Block get_block(std::string label) {
+    [[nodiscard]] Block& get_block(std::string label) {
         for (auto &block : blocks) {
             if (block.get_label() == label)
                 return block;
         }
         assert(false);
-        return Block();
     }
 
     // unreachable code elimination

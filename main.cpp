@@ -49,17 +49,25 @@ int main(int argc, char** argv) {
 
     muncher.jsonify(file_prefix + ".tac.json", instr);
 
-    std::ofstream asm_file(file_prefix + ".s");
-    ASM::Assembler assembler(instr);
-    assembler.assemble(asm_file);
-
     auto cfg = Opt::CFG();
     cfg.make_cfg(instr);
 
-    cfg.jt_seq_uncond();
+    for (int i = 1; i <= 10; i++) {
+        cfg.jt_seq_uncond();
 
-    std::vector<TAC> new_instr = cfg.make_tac();
+        std::vector<TAC> new_instr = cfg.make_tac();
 
-    muncher.jsonify(file_prefix + ".opt.tac.json", new_instr);
+        std::ofstream asm_file(file_prefix + ".s");
+        ASM::Assembler assembler(new_instr);
+        assembler.assemble(asm_file);
+
+        muncher.jsonify(file_prefix + ".opt1.tac.json", new_instr);
+
+        cfg.jt_cond_to_uncond();
+
+        std::vector<TAC> new_new_instr = cfg.make_tac();
+
+        muncher.jsonify(file_prefix + ".opt2.tac.json", new_new_instr);
+    }
     return 0;
 }

@@ -190,7 +190,7 @@ Expressions
     left_munch.push_back(TAC(
         "sub",
         { tl, tr },
-        tl
+        muncher.new_temp()
     ));
 
     left_munch.push_back(TAC(
