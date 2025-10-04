@@ -11,7 +11,6 @@ Block::Block(std::vector<std::shared_ptr<TAC>>& instr) : instr(instr) {
     // connections of current block
     for (auto &t : instr) {
         auto op = t->get_opcode();
-        std::cout << *t << " for " << label << "\n";
         if (ASM::jumps.find(op) != ASM::jumps.end() || op == "jmp")
             jumps.push_back(t);
     }
@@ -60,7 +59,6 @@ Block::Block(std::vector<std::shared_ptr<TAC>>& instr) : instr(instr) {
 
         // normal operations between temporaries only
         if (op != "label" && op != "jmp" && ASM::jumps.find(op) == ASM::jumps.end() && t.has_result()) {
-            std::cout << t << "\n";
             if (op == "copy") {
                 auto arg = t.get_arg();
                 if (original_temp.find(arg) == original_temp.end())
@@ -108,7 +106,6 @@ void CFG::dfs(std::string label, std::set<std::string>& vis) {
 
     for (auto &[child_label, edge] : graph[label]) {
         if (vis.find(child_label) != vis.end()) continue;
-        std::cout << "dfs " << label << "->" << child_label << "\n";
 
         dfs(child_label, vis);
     }
@@ -158,7 +155,9 @@ void CFG::jt_seq_uncond() {
                         graph[label].erase(child_node);
                         graph[label][target_label] = tac;
 
+#ifdef DEBUG
                         std::cout << label << "->" << child_node << "->" << target_label << "\n";
+#endif
                         
                         found_chain = true;
                         break;
@@ -196,16 +195,16 @@ void CFG::jt_cond_to_uncond() {
                     // jc %1, %.Lb
                     // so simply replace it with jmp and delete code after
                     auto &temp_tac = child_instr[i];
+#ifdef DEBUG
                     if (temp_tac->get_opcode() == jump) {
                         std::cout << *temp_tac << "\n";
                         std::cout << *tac << "\n";
                         std::cout << original_temp[temp_tac->get_arg()] << "\n";
                         std::cout << original_temp[tac->get_arg()] << "\n";
                     }
+#endif
                     if (temp_tac->get_opcode() == jump && original_temp[temp_tac->get_arg()] == original_temp[tac->get_arg()]) {
                         found_cond = true;
-
-                        std::cout << *temp_tac << "\n";
 
                         child_instr[i] = std::make_shared<TAC>(
                             "jmp",
