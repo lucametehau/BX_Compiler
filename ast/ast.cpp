@@ -190,7 +190,7 @@ Expressions
     left_munch.push_back(TAC(
         "sub",
         { tl, tr },
-        tl
+        muncher.new_temp()
     ));
 
     left_munch.push_back(TAC(
@@ -255,7 +255,8 @@ Statements
 [[nodiscard]] std::vector<TAC> Jump::munch(MM::MM& muncher) {
     return {TAC(
         "jmp",
-        { token.is_type(Lexer::BREAK) ? muncher.get_break_point() : muncher.get_continue_point() }
+        {},
+        token.is_type(Lexer::BREAK) ? muncher.get_break_point() : muncher.get_continue_point()
     )};
 }
 
@@ -311,7 +312,6 @@ If Else
 #endif
 
     auto expr_munch = expr->munch_bool(muncher, label_then, label_else);
-    std::cout << "In if else " << static_cast<int>(expr->get_type()) << "\n";
     if (expr->get_type() != Type::BOOL)
         throw std::runtime_error("Expected condition of type 'bool' in 'if'!");
     
@@ -329,7 +329,8 @@ If Else
     
     expr_munch.push_back(TAC(
         "jmp",
-        { label_end }
+        {},
+        label_end
     ));
 
     // else
@@ -382,7 +383,8 @@ While
 
     instr.push_back(TAC(
         "jmp",
-        { label_start }
+        {},
+        label_start
     ));
 
     instr.push_back(TAC(
@@ -400,7 +402,26 @@ While
 Program
 */
 [[nodiscard]] std::vector<TAC> Program::munch(MM::MM& muncher) {
-    return block->munch(muncher);
+    std::vector<TAC> instr;
+    instr.push_back(TAC(
+        "label",
+        { muncher.new_label() }
+    ));
+    
+    std::vector<TAC> block_instr = block->munch(muncher);
+    for (auto &t : block_instr)
+        instr.push_back(t);
+    
+    instr.push_back(TAC(
+        "const",
+        { std::to_string(0) },
+        muncher.new_temp()
+    ));
+    instr.push_back(TAC(
+        "ret",
+        { instr.back().get_result() }
+    ));
+    return instr;
 }
 
 

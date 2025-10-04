@@ -5,3 +5,5 @@
 *.json
 *.s
 .vscode/*
+*.zip
+examples/

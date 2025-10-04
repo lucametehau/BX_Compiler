@@ -44,7 +44,7 @@ public:
 
     [[nodiscard]] Type get_type() { return type; }
 
-    [[nodiscard]] virtual std::vector<TAC> munch(MM::MM& muncher) = 0;
+    [[nodiscard]] virtual std::vector<TAC> munch(MM::MM& muncher) override = 0;
     [[nodiscard]] virtual std::vector<TAC> munch_bool([[maybe_unused]] MM::MM& muncher, 
                                                       [[maybe_unused]] std::string label_true, 
                                                       [[maybe_unused]] std::string label_false) {

@@ -14,7 +14,7 @@ private:
     std::optional<std::string> result;
 
 public:
-    TAC() = delete;
+    TAC() = default;
     TAC(std::string opcode, std::vector<std::string> args) : opcode(std::move(opcode)), args(std::move(args)) {}
     TAC(std::string opcode, std::vector<std::string> args, std::string result) : opcode(std::move(opcode)), args(std::move(args)), result(std::move(result)) {}
 
@@ -47,8 +47,21 @@ public:
         return args;
     }
 
+    [[nodiscard]] std::string get_arg() const {
+        assert(!args.empty());
+        return args[0];
+    }
+
     [[nodiscard]] std::string get_result() const {
         assert(result.has_value());
         return result.value();
+    }
+
+    void set_result(std::string _result) {
+        result = _result;
+    }
+
+    void set_arg(std::string arg) {
+        args = { arg };
     }
 };
