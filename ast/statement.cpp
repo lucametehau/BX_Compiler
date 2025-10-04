@@ -5,6 +5,7 @@
 
 namespace Grammar::Statements {
 
+// VARDECL | ASSIGN | PRINT | IFELSE | WHILE | JUMP | BLOCK
 std::unique_ptr<AST::Statement> Statement::match(Parser::Parser& parser) {
     if (auto stmt = VarDecl::match(parser))
         return stmt;
@@ -113,61 +114,6 @@ std::unique_ptr<AST::Statement> Print::match(Parser::Parser& parser) {
     parser.next();
 
     return std::make_unique<AST::Print>(std::move(expr));
-}
-
-// def IDENT(idk) BLOCK
-std::unique_ptr<AST::Statement> ProcDecl::match(Parser::Parser& parser) {
-    if (!parser.expect(Lexer::DEF))
-        return nullptr;
-    parser.next();
-
-    auto token = parser.peek();
-    if (!token.is_type(Lexer::IDENT))
-        return nullptr;
-    parser.next();
-
-    if (!parser.expect(Lexer::LPAREN))
-        return nullptr;
-    parser.next();
-
-    std::vector<std::unique_ptr<AST::Statement>> params;
-
-    while (!parser.expect(Lexer::RPAREN)) {
-        std::vector<std::string> names;
-        while (true) {
-            auto token = parser.peek();
-            if (!token.is_type(Lexer::IDENT))
-                return nullptr;
-            names.push_back(token.get_text());
-            parser.next();
-
-            if (!parser.expect(Lexer::COMMA))
-                break;
-            parser.next();
-        }
-
-        if (!parser.expect(Lexer::COLON))
-            return nullptr;
-        parser.next();
-
-        auto type = parser.peek();
-        if (!type.is_type(Lexer::INT) && !type.is_type(Lexer::BOOL))
-            return nullptr;
-        parser.next();
-
-        for (auto &name : names)
-            params.push_back(std::make_unique<AST::Param>(name, type));
-    }
-
-    if (!parser.expect(Lexer::RPAREN))
-        return nullptr;
-    parser.next();
-
-    auto block = Block::match(parser);
-    if (!block)
-        return nullptr;
-
-    return std::make_unique<AST::ProcDecl>(token, std::move(params), std::move(block));
 }
 
 };

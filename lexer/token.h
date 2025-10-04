@@ -9,7 +9,7 @@ namespace Lexer {
 
 enum Type {
     IDENT, NUMBER, 
-    DEF, VAR, INT, BOOL, PRINT, 
+    DEF, VAR, INT, BOOL, PRINT, VOID,
     IF, ELSE,
     WHILE, BREAK, CONTINUE,
     LPAREN, RPAREN, LBRACE, RBRACE, COLON, SEMICOLON, COMMA,

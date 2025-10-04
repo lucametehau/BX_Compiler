@@ -1,8 +1,10 @@
 #include "block.h"
+#include "proc.h"
 #include <iostream>
 
 namespace Grammar::Statements {
 
+// { STATEMENT* }
 std::unique_ptr<AST::Block> Block::match(Parser::Parser& parser) {
 #ifdef DEBUG
     std::cout << parser.peek_pos() << ", " << parser.peek().get_text() << " in block matching\n";
@@ -23,6 +25,7 @@ std::unique_ptr<AST::Block> Block::match(Parser::Parser& parser) {
     return std::make_unique<AST::Block>(std::move(statements));
 }
 
+// (VARDECL | PROCDECL)*
 std::unique_ptr<AST::Program> Program::match(Parser::Parser& parser) {
     std::vector<std::unique_ptr<AST::Statement>> declarations;
     while (true) {

@@ -312,15 +312,19 @@ struct While : Statement {
 Procedures
 */
 struct ProcDecl : Statement {
-    Lexer::Token name;
+    std::string name;
+    Lexer::Token return_type;
     std::vector<std::unique_ptr<Statement>> params;
     std::unique_ptr<Block> block;
 
-    ProcDecl(Lexer::Token name, std::vector<std::unique_ptr<Statement>> params, std::unique_ptr<Block> block) 
-        : name(name), params(std::move(params)), block(std::move(block)) {}
+    ProcDecl(std::string name, Lexer::Token return_type, std::vector<std::unique_ptr<Statement>> params, std::unique_ptr<Block> block) 
+        : name(name), return_type(return_type), params(std::move(params)), block(std::move(block)) {}
 
     void print(std::ostream& os, int spaces = 0) override {
-        os << std::string(2 * spaces, ' ') << "[Procedure] " << name.get_text() << "\n";
+        os << std::string(2 * spaces, ' ') << "[Procedure] " << name;
+        if (return_type.is_type(Lexer::INT) || return_type.is_type(Lexer::BOOL))
+            os << " -> " << return_type.get_text();
+        os << "\n";
         for (auto &param : params) {
             if (param)
                 param->print(os, spaces + 1);
