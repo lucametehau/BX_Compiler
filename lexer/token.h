@@ -9,7 +9,7 @@ namespace Lexer {
 
 enum Type {
     IDENT, NUMBER, 
-    DEF, VAR, INT, BOOL, PRINT, VOID,
+    DEF, VAR, INT, BOOL, PRINT, VOID, RETURN,
     IF, ELSE,
     WHILE, BREAK, CONTINUE,
     LPAREN, RPAREN, LBRACE, RBRACE, COLON, SEMICOLON, COMMA,
@@ -55,7 +55,7 @@ inline const std::map<std::string, Type> lexing_tokens = {
     {":", COLON}, {";", SEMICOLON}, {"&", AMP}, {"-", DASH},
     {"=", EQ}, {"^", HAT}, {"%", PCENT}, {"|", PIPE},
     {"+", PLUS}, {"/", SLASH}, {"*", STAR}, {"~", TILD},
-    {"def", DEF}, {"var", VAR}, {"int", INT}, {"print", PRINT},
+    {"def", DEF}, {"var", VAR}, {"int", INT}, {"print", PRINT}, {"return", RETURN},
     {"bool", BOOL}, {"true", BOOL}, {"false", BOOL}, {"if", IF}, {"else", ELSE},
     {"<<", LTLT}, {">>", GTGT}, {"==", EQEQ}, {"!=", NEQ},
     {"<", LT}, {"<=", LTE}, {">", GT}, {">=", GTE},

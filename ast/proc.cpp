@@ -3,6 +3,19 @@
 
 namespace Grammar::Statements {
 
+// return (EXPR)?;
+std::unique_ptr<AST::Statement> Return::match(Parser::Parser& parser) {
+    if (!parser.expect(Lexer::RETURN))
+        return nullptr;
+    parser.next();
+
+    auto expr = Expressions::Expression::match(parser);
+    if (!expr)
+        return nullptr;
+
+    return std::make_unique<AST::Return>(std::move(expr));
+}
+
 // def IDENT(PARAM*) (: IDENT)? BLOCK
 std::unique_ptr<AST::Statement> ProcDecl::match(Parser::Parser& parser) {
     if (!parser.expect(Lexer::DEF))

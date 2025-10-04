@@ -235,6 +235,22 @@ struct Jump : Statement {
     }
 };
 
+struct Return : Statement {
+    std::unique_ptr<Expression> expr;
+
+    Return(std::unique_ptr<Expression> expr) : expr(std::move(expr)) {}
+
+    void print(std::ostream& os, int spaces = 0) override {
+        os << std::string(2 * spaces, ' ') << "[Return] ";
+        if (expr)
+            expr->print(os, spaces + 1);
+    }
+
+    [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher) override {
+        throw "oops";
+    }
+};
+
 /*
 Block
 */
