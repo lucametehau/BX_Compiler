@@ -11,7 +11,7 @@ Expressions
 */
 
 [[nodiscard]] std::vector<TAC> NumberExpression::munch(MM::MM& muncher) {
-    type = Type::INT;
+    type = MM::Type::INT;
     return {TAC(
         "const",
         { std::to_string(value) },
@@ -20,6 +20,7 @@ Expressions
 }
 
 [[nodiscard]] std::vector<TAC> IdentExpression::munch(MM::MM& muncher) {
+    type = muncher.get_type(name);
     return {TAC(
         "copy",
         { muncher.get_temp(name) },
@@ -28,7 +29,7 @@ Expressions
 }
 
 [[nodiscard]] std::vector<TAC> BoolExpression::munch_bool([[maybe_unused]] MM::MM& muncher, std::string label_true, std::string label_false) {
-    type = Type::BOOL;
+    type = MM::Type::BOOL;
     return {TAC(
         "jmp",
         {},
@@ -44,11 +45,11 @@ Expressions
     // type checking
     if (Lexer::bool_binary_operators.find(op) != Lexer::bool_binary_operators.end()) {
         throw std::runtime_error("Expected 'int' type unary operator, got 'bool' operator!");
-        // if (expr->get_type() != Type::BOOL)
+        // if (expr->get_type() != MM::Type::BOOL)
         //     throw std::runtime_error("Unary operator " + op + " expected type 'bool' expression!");
     }
     else {
-        if (expr->get_type() != Type::INT)
+        if (expr->get_type() != MM::Type::INT)
             throw std::runtime_error("Unary operator " + token.get_text() + " expected type 'int' expression!");
     }
     type = expr->get_type();
@@ -68,7 +69,7 @@ Expressions
 
     // type checking
     if (op == "!") {
-        if (expr->get_type() != Type::BOOL)
+        if (expr->get_type() != MM::Type::BOOL)
             throw std::runtime_error("Unary operator " + op + " expected type 'bool' expression!");
     }
     else {
@@ -96,7 +97,7 @@ Expressions
         ));
     }
     else {
-        if (left->get_type() != Type::INT) {
+        if (left->get_type() != MM::Type::INT) {
             throw std::runtime_error(std::format(
                 "Error at row {}, col {}! Binary Operator {} expected type 'int' expression!", token.get_row(), token.get_col(), token.get_text()
             ));
@@ -118,6 +119,8 @@ Expressions
 
 
 [[nodiscard]] std::vector<TAC> BinOpExpression::munch_bool(MM::MM& muncher, std::string label_true, std::string label_false) {
+    
+    std::cout << "cuh\n";
     auto op = token.get_type();
 
     std::vector<TAC> left_munch, right_munch;
@@ -137,7 +140,7 @@ Expressions
             ));
         }
         if (Lexer::bool_binary_operators.find(op) != Lexer::bool_binary_operators.end()) {
-            if (left->get_type() != Type::BOOL) {
+            if (left->get_type() != MM::Type::BOOL) {
                 throw std::runtime_error(std::format(
                     "Error at row {}, col {}! Binary Operator {} expected type 'bool' expression!", token.get_row(), token.get_col(), token.get_text()
                 ));
@@ -148,7 +151,7 @@ Expressions
                 "Error at row {}, col {}! Expected 'bool' type binary operator!", token.get_row(), token.get_col()
             ));
         }
-        type = Type::BOOL;
+        type = MM::Type::BOOL;
         
         left_munch.push_back(TAC(
             "label",
@@ -169,7 +172,7 @@ Expressions
         ));
     }
     if (Lexer::bool_binary_operators.find(op) != Lexer::bool_binary_operators.end()) {
-        if (left->get_type() != Type::INT) {
+        if (left->get_type() != MM::Type::INT) {
             throw std::runtime_error(std::format(
                 "Error at row {}, col {}! Binary Operator {} expected type 'int' expression!", token.get_row(), token.get_col(), token.get_text()
             ));
@@ -180,7 +183,7 @@ Expressions
             "Error at row {}, col {}! Expected 'bool' type binary operator, got {}!", token.get_row(), token.get_col(), token.get_text()
         ));
     }
-    type = Type::BOOL;
+    type = MM::Type::BOOL;
 
     auto tl = left_munch.back().get_result(), tr = right_munch.back().get_result();
 
@@ -207,49 +210,145 @@ Expressions
     return left_munch;
 }
 
+
+/*
+Function/Procedure evaluation
+*/
+
+
+[[nodiscard]] std::vector<TAC> Eval::munch(MM::MM& muncher) {
+    std::vector<TAC> instr;
+    std::size_t param_count = 1;
+
+    for (auto &expr : params) {
+        auto expr_munch = expr->munch(muncher);
+
+        utils::concat(instr, expr_munch);
+
+        instr.push_back(TAC(
+            "param",
+            { expr_munch.back().get_result() },
+            std::to_string(param_count)
+        ));
+
+        param_count++;
+    }
+
+    if (type == MM::Type::NONE) {
+        instr.push_back(TAC(
+            "call",
+            { "@" + name, std::to_string(params.size()) }
+        ));
+    }
+    else {
+        instr.push_back(TAC(
+            "call",
+            { "@" + name, std::to_string(params.size()) },
+            muncher.new_temp()
+        ));
+    }
+
+    return instr;
+}
+
 /*
 Statements
 */
 
 [[nodiscard]] std::vector<TAC> VarDecl::munch(MM::MM& muncher) {
-    
-    // std::vector<TAC> expr_munch = expr->munch(muncher);
-    // if (muncher.is_declared(name))
-    //     throw std::runtime_error("Variable " + name + " already declared\n");
-        
-    // if (expr->get_type() != Type::INT)
-    //     throw std::runtime_error("Expected Variable Declaration only for type 'int'!");
+    std::vector<TAC> instr;
+    for (auto &[name, expr] : var_inits) {
+        auto expr_munch = expr->munch(muncher);
 
-    // muncher.scope().declare(name, expr_munch.back().get_result());
-    // return expr_munch;
-    return {};
+        if (expr->get_type() != type) {
+            throw std::runtime_error(std::format(
+                "Expected Variable Declaration of type {}, got type {}!", MM::type_text[type], MM::type_text[expr->get_type()]
+            ));
+        }
+
+        utils::concat(instr, expr_munch);
+        muncher.scope().declare(name, type, muncher.new_temp());
+    }
+
+    return instr;
 }
 
 [[nodiscard]] std::vector<TAC> Assign::munch(MM::MM& muncher) {
-    // std::vector<TAC> expr_munch = expr->munch(muncher);
+    std::cout << "assign\n";
+    auto temp = muncher.get_temp(name);
+    auto var_type = muncher.get_type(name);
 
-    // if (expr->get_type() != Type::INT)
-    //     throw std::runtime_error("Expected Assign only for type 'int', since Variable Declaration is only available for 'int'!");
-    
-    // expr_munch.push_back(TAC(
-    //     "copy",
-    //     { expr_munch.back().get_result() },
-    //     muncher.get_temp(name)
-    // ));
-    return {};
-}
+    if (var_type == MM::Type::INT) {
+        auto expr_munch = expr->munch(muncher);
 
-[[nodiscard]] std::vector<TAC> Print::munch(MM::MM& muncher) {
-    std::vector<TAC> expr_munch = expr->munch(muncher);
+        if (expr->get_type() != var_type) {
+            throw std::runtime_error(std::format(
+                "Expected Variable Declaration of type {}, got type {}!", MM::type_text[var_type], MM::type_text[expr->get_type()]
+            ));
+        }
+        
+        expr_munch.push_back(TAC(
+            "copy",
+            { expr_munch.back().get_result() },
+            temp
+        ));
+        return expr_munch;
+    }
 
-    if (expr->get_type() != Type::INT)
-        throw std::runtime_error("Expected Print only for type 'int'!");
+    // bool assignment
+
+    auto label_true = muncher.new_label();
+    auto label_false = muncher.new_label();
+    auto label_end = muncher.new_label();
+
+    auto expr_munch = expr->munch_bool(muncher, label_true, label_false);
 
     expr_munch.push_back(TAC(
-        "print",
-        { expr_munch.back().get_result() }
+        "label",
+        { label_true }
     ));
+
+    expr_munch.push_back(TAC(
+        "const",
+        { "1" },
+        temp
+    ));
+
+    expr_munch.push_back(TAC(
+        "jmp",
+        {},
+        label_end
+    ));
+
+    expr_munch.push_back(TAC(
+        "label",
+        { label_false }
+    ));
+
+    expr_munch.push_back(TAC(
+        "const",
+        { "0" },
+        temp
+    ));
+
+    expr_munch.push_back(TAC(
+        "label",
+        { label_end }
+    ));
+
     return expr_munch;
+}
+
+[[nodiscard]] std::vector<TAC> Call::munch(MM::MM& muncher) {
+    auto instr = eval->munch(muncher);
+
+    if (eval->get_type() != MM::Type::NONE) {
+        throw std::runtime_error(std::format(
+            "Expected type 'void' for procedure, got {}", MM::type_text[eval->get_type()]
+        ));
+    }
+
+    return instr;
 }
 
 [[nodiscard]] std::vector<TAC> Jump::munch(MM::MM& muncher) {
@@ -284,7 +383,7 @@ If Else
     auto label_end = muncher.new_label();
     if (!else_branch.has_value()) {
         auto expr_munch = expr->munch_bool(muncher, label_then, label_end);
-        if (expr->get_type() != Type::BOOL)
+        if (expr->get_type() != MM::Type::BOOL)
             throw std::runtime_error("Expected condition of type 'bool' in 'if'!");
         
         auto then_munch = then_branch->munch(muncher);
@@ -310,7 +409,7 @@ If Else
 #endif
 
     auto expr_munch = expr->munch_bool(muncher, label_then, label_else);
-    if (expr->get_type() != Type::BOOL)
+    if (expr->get_type() != MM::Type::BOOL)
         throw std::runtime_error("Expected condition of type 'bool' in 'if'!");
     
     auto then_munch = then_branch->munch(muncher);
@@ -398,7 +497,43 @@ While
 Procedures
 */
 [[nodiscard]] std::vector<TAC> ProcDecl::munch(MM::MM& muncher) {
-    return {};
+    std::vector<TAC> instr;
+    std::vector<std::string> args;
+
+    for (auto &param : params) {
+        auto [name, type] = param;
+        muncher.scope().declare(name, MM::lexer_to_mm_type[type.get_type()], muncher.new_param_temp());
+        args.push_back(name);
+    }
+
+    instr.push_back(TAC(
+        "proc",
+        args,
+        name
+    ));
+
+    auto block_munch = block->munch(muncher);
+
+    utils::concat(instr, block_munch);
+
+    return instr;
+}
+
+[[nodiscard]] std::vector<TAC> Return::munch(MM::MM& muncher) {
+    std::vector<TAC> instr;
+    std::vector<std::string> args;
+    
+    if (expr) {
+        instr = expr->munch(muncher);
+        args = { instr.back().get_result() };
+    }
+
+    instr.push_back(TAC(
+        "ret",
+        args
+    ));
+
+    return instr;
 }
 
 /*

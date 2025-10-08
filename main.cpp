@@ -44,10 +44,10 @@ int main(int argc, char** argv) {
     ast->print(std::cout);
 #endif
 
-    // MM::MM muncher;
-    // auto instr = ast->munch(muncher);
+    MM::MM muncher;
+    auto instr = ast->munch(muncher);
 
-    // muncher.jsonify(file_prefix + ".tac.json", instr);
+    muncher.jsonify(file_prefix + ".tac.json", instr);
 
     // auto cfg = Opt::CFG();
     // cfg.make_cfg(instr);

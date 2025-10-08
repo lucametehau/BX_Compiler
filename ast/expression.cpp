@@ -75,5 +75,36 @@ std::unique_ptr<AST::Expression> Expression::match_term(Parser::Parser& parser) 
 
     return nullptr;
 }
+
+// IDENT(EXPR*)
+std::unique_ptr<AST::Expression> Eval::match(Parser::Parser& parser) {
+    auto name = parser.peek();
+    if (!name.is_type(Lexer::PRINT))
+        return nullptr;
+    parser.next();
+
+    if (!parser.expect(Lexer::LPAREN))
+        return nullptr;
+    parser.next();
+    
+    std::vector<std::unique_ptr<AST::Expression>> params;
+    while (true) {
+        auto expr = Expressions::Expression::match(parser);
+        if (!expr)
+            return nullptr;
+
+        params.push_back(std::move(expr));
+        
+        if (!parser.expect(Lexer::COMMA))
+            break;
+        parser.next();
+    }
+    
+    if (!parser.expect(Lexer::RPAREN))
+        return nullptr;
+    parser.next();
+
+    return std::make_unique<AST::Eval>(name.get_text(), std::move(params));
+}
     
 }; // namespace Grammar::Expressions

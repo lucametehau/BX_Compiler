@@ -2,16 +2,17 @@
 #include "block.h"
 #include "conditional.h"
 #include "loop.h"
+#include "proc.h"
 
 namespace Grammar::Statements {
 
-// VARDECL | ASSIGN | PRINT | IFELSE | WHILE | JUMP | BLOCK
+// VARDECL | ASSIGN | CALL | IFELSE | WHILE | JUMP | BLOCK
 std::unique_ptr<AST::Statement> Statement::match(Parser::Parser& parser) {
     if (auto stmt = VarDecl::match(parser))
         return stmt;
     if (auto stmt = Assign::match(parser))
         return stmt;
-    if (auto stmt = Print::match(parser))
+    if (auto stmt = Call::match(parser))
         return stmt;
     if (auto stmt = IfElse::match(parser))
         return stmt;
@@ -21,41 +22,34 @@ std::unique_ptr<AST::Statement> Statement::match(Parser::Parser& parser) {
         return stmt;
     if (auto stmt = Block::match(parser))
         return stmt;
+    if (auto stmt = Return::match(parser))
+        return stmt;
 
     return nullptr;
 }
 
-// IDENT = EXPR
-std::unique_ptr<AST::Statement> VarInit::match(Parser::Parser& parser) {
-    auto ident = parser.peek();
-    if (!ident.is_type(Lexer::IDENT))
-        return nullptr;
-    parser.next();
-
-    if (!parser.expect(Lexer::EQ))
-        return nullptr;
-    parser.next();
-
-    auto expr = Expressions::Expression::match(parser);
-    if (!expr)
-        return nullptr;
-    
-    return std::make_unique<AST::VarInit>(ident.get_text(), std::move(expr));
-}
-
-// var VAR_INIT* : TYPE;
+// var (IDENT = EXPR)* : TYPE;
 std::unique_ptr<AST::Statement> VarDecl::match(Parser::Parser& parser) {
     if (!parser.expect(Lexer::VAR))
         return nullptr;
     parser.next();
 
-    std::vector<std::unique_ptr<AST::Statement>> var_inits;
+    std::vector<std::pair<std::string, std::unique_ptr<AST::Expression>>> var_inits;
     while (true) {
-        auto init = VarInit::match(parser);
-        if (!init)
+        auto name = parser.peek();
+        if (!name.is_type(Lexer::IDENT))
+            return nullptr;
+        parser.next();
+
+        if (!parser.expect(Lexer::EQ))
+            return nullptr;
+        parser.next();
+
+        auto expr = Expressions::Expression::match(parser);
+        if (!expr)
             return nullptr;
         
-        var_inits.push_back(std::move(init));
+        var_inits.push_back(std::make_pair(name.get_text(), std::move(expr)));
         
         if (!parser.expect(Lexer::COMMA))
             break;
@@ -78,26 +72,14 @@ std::unique_ptr<AST::Statement> VarDecl::match(Parser::Parser& parser) {
     return std::make_unique<AST::VarDecl>(std::move(var_inits), type);
 }
 
-// VAR_INIT;
+// IDENT = EXPR;
 std::unique_ptr<AST::Statement> Assign::match(Parser::Parser& parser) {
-    auto var_init = VarInit::match(parser);
-    if (!var_init)
-        return nullptr;
-    
-    if (!parser.expect(Lexer::SEMICOLON))
+    auto name = parser.peek();
+    if (!name.is_type(Lexer::IDENT))
         return nullptr;
     parser.next();
 
-    return std::make_unique<AST::Assign>(std::move(var_init));
-}
-
-// print(EXPR);
-std::unique_ptr<AST::Statement> Print::match(Parser::Parser& parser) {
-    if (!parser.expect(Lexer::PRINT))
-        return nullptr;
-    parser.next();
-
-    if (!parser.expect(Lexer::LPAREN))
+    if (!parser.expect(Lexer::EQ))
         return nullptr;
     parser.next();
 
@@ -105,15 +87,11 @@ std::unique_ptr<AST::Statement> Print::match(Parser::Parser& parser) {
     if (!expr)
         return nullptr;
     
-    if (!parser.expect(Lexer::RPAREN))
-        return nullptr;
-    parser.next();
-    
     if (!parser.expect(Lexer::SEMICOLON))
         return nullptr;
     parser.next();
 
-    return std::make_unique<AST::Print>(std::move(expr));
+    return std::make_unique<AST::Assign>(name.get_text(), std::move(expr));
 }
 
 };

@@ -10,12 +10,6 @@
 
 namespace AST {
 
-enum class Type {
-    INT,
-    BOOL,
-    NONE
-};
-
 struct AST {
     virtual ~AST() = default;
     
@@ -37,12 +31,12 @@ Expressions
 
 struct Expression : AST {
 protected:
-    Type type = Type::NONE;
+    MM::Type type = MM::Type::NONE;
 
 public:
     void print(std::ostream& os, int spaces = 0) override = 0;
 
-    [[nodiscard]] Type get_type() { return type; }
+    [[nodiscard]] MM::Type get_type() { return type; }
 
     [[nodiscard]] virtual std::vector<TAC> munch(MM::MM& muncher) override = 0;
     [[nodiscard]] virtual std::vector<TAC> munch_bool([[maybe_unused]] MM::MM& muncher, 
@@ -56,7 +50,7 @@ struct NumberExpression : Expression {
     int64_t value;
 
     NumberExpression(int64_t value) : value(value) {
-        type = Type::INT;
+        type = MM::Type::INT;
     }
 
     void print(std::ostream& os, int spaces = 0) override {
@@ -70,7 +64,7 @@ struct IdentExpression : Expression {
     std::string name;
 
     IdentExpression(std::string name) : name(name) {
-        type = Type::INT; // only int variables for now
+        // type = MM::Type::INT; // only int variables for now
     }
 
     void print(std::ostream& os, int spaces = 0) override {
@@ -85,7 +79,7 @@ struct BoolExpression : Expression {
 
     BoolExpression(std::string s_value) {
         value = s_value == "true";
-        type = Type::BOOL;
+        type = MM::Type::BOOL;
     }
 
     void print(std::ostream& os, int spaces = 0) override {
@@ -139,6 +133,27 @@ struct BinOpExpression : Expression {
 };
 
 /*
+Function/Procedure eval
+*/
+
+struct Eval : Expression {
+    std::string name;
+    std::vector<std::unique_ptr<Expression>> params;
+
+    Eval(std::string name, std::vector<std::unique_ptr<Expression>> params) : name(std::move(name)), params(std::move(params)) {}
+
+    void print(std::ostream& os, int spaces = 0) override {
+        os << std::string(2 * spaces, ' ') << "[Eval] " << name << "\n";
+        for (auto &expr : params) {
+            if (expr)
+                expr->print(os, spaces + 1);
+        }
+    }
+
+    [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher) override;
+};
+
+/*
 Statements
 */
 struct Statement : AST {
@@ -147,47 +162,35 @@ struct Statement : AST {
     [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher) override = 0;
 };
 
-struct VarInit : Statement {
-    std::string name;
-    std::unique_ptr<Expression> expr;
-
-    VarInit(std::string name, std::unique_ptr<Expression> expr) : name(name), expr(std::move(expr)) {}
-    void print(std::ostream& os, int spaces = 0) override {
-        os << std::string(2 * spaces, ' ') << "[VarInit] " << name << " =\n";
-        if (expr)
-            expr->print(os, spaces + 1);
-    }
-
-    [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher) override {
-        throw "xd\n";
-    }
-};
-
-struct Param : Statement {
+struct Param {
     std::string name;
     Lexer::Token type;
 
     Param(std::string name, Lexer::Token type) : name(name), type(type) {}
 
-    void print(std::ostream& os, int spaces = 0) override {
+    void print(std::ostream& os, int spaces = 0) {
         os << std::string(2 * spaces, ' ') << "[Param] " << name << " : " << type.get_text() << "\n";
     }
 
-    [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher) override {
+    [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher) {
         throw "lol\n";
     }
 };
 
 struct VarDecl : Statement {
-    std::vector<std::unique_ptr<Statement>> var_inits;
-    Lexer::Token type;
+    std::vector<std::pair<std::string, std::unique_ptr<Expression>>> var_inits;
+    MM::Type type;
 
-    VarDecl(std::vector<std::unique_ptr<Statement>> var_inits, Lexer::Token type) : var_inits(std::move(var_inits)), type(std::move(type)) {}
+    VarDecl(std::vector<std::pair<std::string, std::unique_ptr<Expression>>> var_inits, Lexer::Token _type) : var_inits(std::move(var_inits)) {
+        type = MM::lexer_to_mm_type[_type.get_type()];
+    }
+
     void print(std::ostream& os, int spaces = 0) override {
-        os << std::string(2 * spaces, ' ') << "[VarDecl] Type " << type.get_text() << "\n";
-        for (auto &init : var_inits) {
-            if (init)
-                init->print(os, spaces + 1);
+        os << std::string(2 * spaces, ' ') << "[VarDecl] Type " << MM::type_text[type] << "\n";
+        for (auto &[name, expr] : var_inits) {
+            os << std::string(2 * spaces + 2, ' ') << name << " = \n";
+            if (expr)
+                expr->print(os, spaces + 2);
         }
     }
 
@@ -195,27 +198,29 @@ struct VarDecl : Statement {
 };
 
 struct Assign : Statement {
-    std::unique_ptr<Statement> var_init;
+    std::string name;
+    std::unique_ptr<Expression> expr;
 
-    Assign(std::unique_ptr<Statement> var_init) : var_init(std::move(var_init)) {}
+    Assign(std::string name, std::unique_ptr<Expression> expr) : name(std::move(name)), expr(std::move(expr)) {}
+
     void print(std::ostream& os, int spaces = 0) override {
-        os << std::string(2 * spaces, ' ') << "[Assign]\n";
-        if (var_init)
-            var_init->print(os, spaces + 1);
+        os << std::string(2 * spaces, ' ') << "[Assign] " << name << " = \n";
+        if (expr)
+            expr->print(os, spaces + 1);
     }
 
     [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher) override;
 };
 
-struct Print : Statement {
-    std::unique_ptr<Expression> expr;
+struct Call : Statement {
+    std::unique_ptr<Expression> eval;
 
-    Print(std::unique_ptr<Expression> expr) : expr(std::move(expr)) {}
+    Call(std::unique_ptr<Expression> eval) : eval(std::move(eval)) {}
 
     void print(std::ostream& os, int spaces = 0) override {
-        os << std::string(2 * spaces, ' ') << "[Print]\n";
-        if (expr)
-            expr->print(os, spaces + 1);
+        os << std::string(2 * spaces, ' ') << "[Call]\n";
+        if (eval)
+            eval->print(os, spaces + 1);
     }
 
     [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher) override;
@@ -238,6 +243,7 @@ struct Jump : Statement {
 struct Return : Statement {
     std::unique_ptr<Expression> expr;
 
+    Return() : expr(nullptr) {}
     Return(std::unique_ptr<Expression> expr) : expr(std::move(expr)) {}
 
     void print(std::ostream& os, int spaces = 0) override {
@@ -246,9 +252,7 @@ struct Return : Statement {
             expr->print(os, spaces + 1);
     }
 
-    [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher) override {
-        throw "oops";
-    }
+    [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher) override;
 };
 
 /*
@@ -330,10 +334,10 @@ Procedures
 struct ProcDecl : Statement {
     std::string name;
     Lexer::Token return_type;
-    std::vector<std::unique_ptr<Statement>> params;
+    std::vector<Param> params;
     std::unique_ptr<Block> block;
 
-    ProcDecl(std::string name, Lexer::Token return_type, std::vector<std::unique_ptr<Statement>> params, std::unique_ptr<Block> block) 
+    ProcDecl(std::string name, Lexer::Token return_type, std::vector<Param> params, std::unique_ptr<Block> block) 
         : name(name), return_type(return_type), params(std::move(params)), block(std::move(block)) {}
 
     void print(std::ostream& os, int spaces = 0) override {
@@ -342,11 +346,10 @@ struct ProcDecl : Statement {
             os << " -> " << return_type.get_text();
         os << "\n";
         for (auto &param : params) {
-            if (param)
-                param->print(os, spaces + 1);
+            param.print(os, spaces + 1);
         }
         if (block)
-            block->print(os, spaces + 2);
+            block->print(os, spaces + 1);
     }
 
     [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher) override;

@@ -9,5 +9,9 @@ struct Expression {
 
     static std::unique_ptr<AST::Expression> match_term(Parser::Parser& parser);
 };
+
+struct Eval {
+    static std::unique_ptr<AST::Expression> match(Parser::Parser& parser);
+};
     
 }; // namespace Grammar::Expressions

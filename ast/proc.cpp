@@ -10,10 +10,11 @@ std::unique_ptr<AST::Statement> Return::match(Parser::Parser& parser) {
     parser.next();
 
     auto expr = Expressions::Expression::match(parser);
-    if (!expr)
-        return nullptr;
 
-    return std::make_unique<AST::Return>(std::move(expr));
+    if (!parser.expect(Lexer::SEMICOLON))
+        return nullptr;
+    parser.next();
+    return !expr ? std::make_unique<AST::Return>() : std::make_unique<AST::Return>(std::move(expr));
 }
 
 // def IDENT(PARAM*) (: IDENT)? BLOCK
@@ -31,7 +32,9 @@ std::unique_ptr<AST::Statement> ProcDecl::match(Parser::Parser& parser) {
         return nullptr;
     parser.next();
 
-    std::vector<std::unique_ptr<AST::Statement>> params;
+    std::cout << "matching proc " << name.get_text() << "\n";
+
+    std::vector<AST::Param> params;
 
     while (!parser.expect(Lexer::RPAREN)) {
         std::vector<std::string> names;
@@ -57,7 +60,7 @@ std::unique_ptr<AST::Statement> ProcDecl::match(Parser::Parser& parser) {
         parser.next();
 
         for (auto &name : names)
-            params.push_back(std::make_unique<AST::Param>(name, type));
+            params.push_back({name, type});
     }
 
     if (!parser.expect(Lexer::RPAREN))
@@ -80,6 +83,19 @@ std::unique_ptr<AST::Statement> ProcDecl::match(Parser::Parser& parser) {
         return nullptr;
 
     return std::make_unique<AST::ProcDecl>(name.get_text(), return_type, std::move(params), std::move(block));
+}
+
+// EVAL;
+std::unique_ptr<AST::Statement> Call::match(Parser::Parser& parser) {
+    auto eval = Expressions::Eval::match(parser);
+    if (!eval)
+        return nullptr;
+
+    if (!parser.expect(Lexer::SEMICOLON))
+        return nullptr;
+    parser.next();
+
+    return std::make_unique<AST::Call>(std::move(eval));
 }
 
 };
