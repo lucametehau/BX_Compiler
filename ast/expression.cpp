@@ -36,6 +36,7 @@ std::unique_ptr<AST::Expression> Expression::match_term(Parser::Parser& parser) 
 #ifdef DEBUG
     std::cout << parser.peek_pos() << ", " << parser.peek().get_text() << " in expression term matching\n";
 #endif
+
     const auto token = parser.peek();
     if (token.is_type(Lexer::LPAREN)) {
         parser.next();
@@ -52,7 +53,10 @@ std::unique_ptr<AST::Expression> Expression::match_term(Parser::Parser& parser) 
     }
     
     if (token.is_type(Lexer::IDENT)) {
-        parser.next();
+        if (auto eval = Eval::match(parser))
+            return eval;
+        
+        // parser.next() is done in Eval::match
         return std::make_unique<AST::IdentExpression>(token.get_text());
     }
     
@@ -79,7 +83,7 @@ std::unique_ptr<AST::Expression> Expression::match_term(Parser::Parser& parser) 
 // IDENT(EXPR*)
 std::unique_ptr<AST::Expression> Eval::match(Parser::Parser& parser) {
     auto name = parser.peek();
-    if (!name.is_type(Lexer::PRINT))
+    if (!name.is_type(Lexer::IDENT))
         return nullptr;
     parser.next();
 

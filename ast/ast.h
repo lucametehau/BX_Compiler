@@ -171,10 +171,6 @@ struct Param {
     void print(std::ostream& os, int spaces = 0) {
         os << std::string(2 * spaces, ' ') << "[Param] " << name << " : " << type.get_text() << "\n";
     }
-
-    [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher) {
-        throw "lol\n";
-    }
 };
 
 struct VarDecl : Statement {
@@ -247,7 +243,7 @@ struct Return : Statement {
     Return(std::unique_ptr<Expression> expr) : expr(std::move(expr)) {}
 
     void print(std::ostream& os, int spaces = 0) override {
-        os << std::string(2 * spaces, ' ') << "[Return] ";
+        os << std::string(2 * spaces, ' ') << "[Return]\n";
         if (expr)
             expr->print(os, spaces + 1);
     }

@@ -147,7 +147,7 @@ public:
             while (j && instructions[j].get_opcode() != "ret")
                 j--;
 
-            std::cout << ind << " " << j << " " << instructions.size() << "\n";
+            // std::cout << ind << " " << j << " " << instructions.size() << "\n";
             
             // procedure between [ind, j]
             auto tab = std::string(2, ' ');

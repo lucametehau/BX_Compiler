@@ -6,29 +6,45 @@
 
 namespace Grammar::Statements {
 
-// VARDECL | ASSIGN | CALL | IFELSE | WHILE | JUMP | BLOCK
+// VARDECL | ASSIGN | CALL | IFELSE | WHILE | JUMP | BLOCK | RETURN
 std::unique_ptr<AST::Statement> Statement::match(Parser::Parser& parser) {
+    auto start_pos = parser.peek_pos();
     if (auto stmt = VarDecl::match(parser))
         return stmt;
+    parser.set_pos(start_pos);
+
     if (auto stmt = Assign::match(parser))
         return stmt;
+    parser.set_pos(start_pos);
+
     if (auto stmt = Call::match(parser))
         return stmt;
+    parser.set_pos(start_pos);
+
     if (auto stmt = IfElse::match(parser))
         return stmt;
+    parser.set_pos(start_pos);
+
     if (auto stmt = While::match(parser))
         return stmt;
+    parser.set_pos(start_pos);
+
     if (auto stmt = Jump::match(parser))
         return stmt;
+    parser.set_pos(start_pos);
+
     if (auto stmt = Block::match(parser))
         return stmt;
+    parser.set_pos(start_pos);
+
     if (auto stmt = Return::match(parser))
         return stmt;
+    parser.set_pos(start_pos);
 
     return nullptr;
 }
 
-// var (IDENT = EXPR)* : TYPE;
+// var (IDENT = EXPR,)* : TYPE;
 std::unique_ptr<AST::Statement> VarDecl::match(Parser::Parser& parser) {
     if (!parser.expect(Lexer::VAR))
         return nullptr;

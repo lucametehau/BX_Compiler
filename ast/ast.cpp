@@ -119,8 +119,6 @@ Expressions
 
 
 [[nodiscard]] std::vector<TAC> BinOpExpression::munch_bool(MM::MM& muncher, std::string label_true, std::string label_false) {
-    
-    std::cout << "cuh\n";
     auto op = token.get_type();
 
     std::vector<TAC> left_munch, right_munch;
@@ -220,6 +218,12 @@ Function/Procedure evaluation
     std::vector<TAC> instr;
     std::size_t param_count = 1;
 
+    // print is a special function
+    if (name != "print")
+        type = muncher.get_type(name);
+    else
+        type = MM::Type::NONE;
+
     for (auto &expr : params) {
         auto expr_munch = expr->munch(muncher);
 
@@ -274,7 +278,6 @@ Statements
 }
 
 [[nodiscard]] std::vector<TAC> Assign::munch(MM::MM& muncher) {
-    std::cout << "assign\n";
     auto temp = muncher.get_temp(name);
     auto var_type = muncher.get_type(name);
 
@@ -343,9 +346,9 @@ Statements
     auto instr = eval->munch(muncher);
 
     if (eval->get_type() != MM::Type::NONE) {
-        throw std::runtime_error(std::format(
-            "Expected type 'void' for procedure, got {}", MM::type_text[eval->get_type()]
-        ));
+        std::cout << std::format(
+            "Warning! Expected type 'void' for procedure, got function of type '{}'!", MM::type_text[eval->get_type()]
+        ) << "\n";
     }
 
     return instr;
@@ -499,6 +502,9 @@ Procedures
 [[nodiscard]] std::vector<TAC> ProcDecl::munch(MM::MM& muncher) {
     std::vector<TAC> instr;
     std::vector<std::string> args;
+
+    // function already declared in Program::munch
+    muncher.scope().declare(name, MM::lexer_to_mm_type[return_type.get_type()], muncher.new_temp());
 
     for (auto &param : params) {
         auto [name, type] = param;
