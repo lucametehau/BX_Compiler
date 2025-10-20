@@ -325,9 +325,43 @@ struct While : Statement {
 };
 
 /*
-Procedures
+Declarations
 */
-struct ProcDecl : Statement {
+struct Declaration : AST {
+    virtual void declare(MM::MM& muncher) = 0;
+
+    void print(std::ostream& os, int spaces = 0) override = 0;
+
+    [[nodiscard]] virtual std::vector<TAC> munch(MM::MM& muncher) override = 0;
+};
+
+struct GlobalVarDecl : Declaration {
+    std::vector<std::pair<std::string, std::unique_ptr<Expression>>> var_inits;
+    MM::Type type;
+
+    GlobalVarDecl(std::vector<std::pair<std::string, std::unique_ptr<Expression>>> var_inits, Lexer::Token _type) : var_inits(std::move(var_inits)) {
+        type = MM::lexer_to_mm_type[_type.get_type()];
+    }
+
+    void print(std::ostream& os, int spaces = 0) override {
+        os << std::string(2 * spaces, ' ') << "[VarDecl] Type " << MM::type_text[type] << "\n";
+        for (auto &[name, expr] : var_inits) {
+            os << std::string(2 * spaces + 2, ' ') << name << " = \n";
+            if (expr)
+                expr->print(os, spaces + 2);
+        }
+    }
+
+    [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher) override;
+
+    void declare(MM::MM& muncher) override {
+        for (auto &[name, _] : var_inits) {
+            muncher.scope().declare(name, type, muncher.new_temp());
+        }
+    }
+};
+
+struct ProcDecl : Declaration {
     std::string name;
     Lexer::Token return_type;
     std::vector<Param> params;
@@ -349,17 +383,22 @@ struct ProcDecl : Statement {
     }
 
     [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher) override;
+
+    void declare(MM::MM& muncher) override {
+        std::cout << "Declared " << name << " with type " << return_type.get_text() << "\n";
+        muncher.scope().declare(name, MM::lexer_to_mm_type[return_type.get_type()], muncher.new_temp());
+    }
 };
 
 /*
 Program
 */
-struct Program : Block {
-    std::vector<std::unique_ptr<Statement>> declarations;
+struct Program {
+    std::vector<std::unique_ptr<Declaration>> declarations;
 
-    Program(std::vector<std::unique_ptr<Statement>> declarations) : declarations(std::move(declarations)) {}
+    Program(std::vector<std::unique_ptr<Declaration>> declarations) : declarations(std::move(declarations)) {}
 
-    void print(std::ostream& os, int spaces = 0) override {
+    void print(std::ostream& os, int spaces = 0) {
         os << std::string(2 * spaces, ' ') << "[Program]\n";
         for (auto &declaration : declarations) {
             if (declaration)
@@ -367,7 +406,7 @@ struct Program : Block {
         }
     }
 
-    [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher) override;
+    [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher);
 };
 
 }; // namespace AST

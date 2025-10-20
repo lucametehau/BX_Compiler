@@ -2,7 +2,7 @@
 #include <fstream>
 #include <sstream>
 #include "lexer/lexer.h"
-#include "ast/block.h"
+#include "ast/declarations.h"
 #include "asm/asm.h"
 #include "optimizations/cfg.h"
 
@@ -34,7 +34,7 @@ int main(int argc, char** argv) {
 
     Parser::Parser parser(tokens);
     std::cout << "Parsing and building AST...\n";
-    auto ast = Grammar::Statements::Program::match(parser);
+    auto ast = Grammar::Declarations::Program::match(parser);
 
     if (!ast) {
         throw std::runtime_error("Parser failed!");

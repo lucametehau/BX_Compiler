@@ -497,14 +497,34 @@ While
 }
 
 /*
-Procedures
+Declarations
 */
+
+[[nodiscard]] std::vector<TAC> GlobalVarDecl::munch(MM::MM& muncher) {
+    std::vector<TAC> instr;
+    for (auto &[name, expr] : var_inits) {
+        auto expr_munch = expr->munch(muncher);
+
+        if (expr->get_type() != type) {
+            throw std::runtime_error(std::format(
+                "Expected Variable Declaration of type {}, got type {}!", MM::type_text[type], MM::type_text[expr->get_type()]
+            ));
+        }
+
+        utils::concat(instr, expr_munch);
+        // function already declared in Program::munch
+        // muncher.scope().declare(name, type, muncher.new_temp());
+    }
+
+    return instr;
+}
+
 [[nodiscard]] std::vector<TAC> ProcDecl::munch(MM::MM& muncher) {
     std::vector<TAC> instr;
     std::vector<std::string> args;
 
     // function already declared in Program::munch
-    muncher.scope().declare(name, MM::lexer_to_mm_type[return_type.get_type()], muncher.new_temp());
+    // muncher.scope().declare(name, MM::lexer_to_mm_type[return_type.get_type()], muncher.new_temp());
 
     for (auto &param : params) {
         auto [name, type] = param;
@@ -550,6 +570,9 @@ Program
     
     // global scope
     muncher.push_scope();
+
+    for (auto &declaration : declarations)
+        declaration->declare(muncher);
     
     for (auto &declaration : declarations) {
         auto decl_munch = declaration->munch(muncher);
