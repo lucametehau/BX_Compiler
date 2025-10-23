@@ -57,8 +57,10 @@ void Assembler::assemble_instr(std::ofstream& os, TAC& tac) {
         os << "\tmovq " << stack_register(args[0]) << ", %r8\n";
         os << "\tmovq %r8, " << stack_register(tac.get_result()) << "\n";
     }
-    else if (op == "print") {
+    else if (op == "call") {
         assert(args.size() == 1);
+        os << "\tcallq " << args[0].substr(1) << "\n";
+        return;
 #ifdef _WIN32
         os << "\tmovq " << stack_register(args[0]) << ", %rcx\n";
         os << "\tcallq bx_print_int\n";
@@ -95,6 +97,9 @@ void Assembler::assemble_instr(std::ofstream& os, TAC& tac) {
     }
     else if (op == "ret") {
         // nothing for now, will see
+        if (!args.empty())
+            os << "\tmovq " << stack_register(args[0]) << ", %rax\n";
+        os << "\tret\n";
     }
     else {
         throw std::runtime_error("Unrecognized operator " + op);

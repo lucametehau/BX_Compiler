@@ -54,7 +54,11 @@ int main(int argc, char** argv) {
     std::cout << "Munching AST...\n";
     auto instr = ast->munch(muncher);
 
-    muncher.jsonify(file_prefix + ".tac.json", instr);
+    muncher.jsonify(file_prefix + ".tac.json", instr); 
+    
+    std::ofstream asm_file(file_prefix + ".s");
+    ASM::Assembler assembler(muncher, instr);
+    assembler.assemble(asm_file);
 
     // auto cfg = Opt::CFG();
     // cfg.make_cfg(instr);

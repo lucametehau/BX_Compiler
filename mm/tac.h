@@ -20,14 +20,9 @@ public:
 
     friend std::ostream& operator << (std::ostream& os, TAC& tac) {
         os << "{\"opcode\": \"" << tac.opcode << "\", \"args\": [";
-        std::cout << tac.opcode << "\n";
-        if (tac.has_result())
-            std::cout << tac.get_result() << "\n";
         for (std::size_t i = 0; i + 1 < tac.args.size(); i++) {
             os << "\"" << tac.args[i] << "\", ";
-            std::cout << tac.args[i] << "\n";
         }
-        // std::cout << tac.args.back() << "\n";
         if (!tac.args.empty() && (tac.args.back()[0] == '%' || tac.args.back()[0] == '@'))
             os << "\"" << tac.args.back() << "\"";
         else if (!tac.args.empty())

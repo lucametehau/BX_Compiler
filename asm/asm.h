@@ -1,5 +1,6 @@
 #pragma once
 #include "../mm/tac.h"
+#include "../mm/mm.h"
 #include <fstream>
 #include <set>
 #include <map>
@@ -9,11 +10,12 @@ namespace ASM {
 
 class Assembler {
 private:
+    MM::MM muncher;
     std::size_t stack_size;
     std::vector<TAC> instr;
 
 public:
-    Assembler(std::vector<TAC>& _instr);
+    Assembler(MM::MM& muncher, std::vector<TAC>& _instr);
 
     void assemble(std::ofstream& os);
 

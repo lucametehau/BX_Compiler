@@ -539,6 +539,7 @@ Declarations
 
     // function already declared in Program::munch
     // muncher.scope().declare(name, MM::lexer_to_mm_type[return_type.get_type()], muncher.new_temp());
+    muncher.push_scope();
     muncher.scope().set_function_type(MM::lexer_to_mm_type[return_type.get_type()]);
 
     for (auto &param : params) {
@@ -557,6 +558,13 @@ Declarations
     auto block_munch = block->munch(muncher);
 
     utils::concat(instr, block_munch);
+
+    instr.push_back(TAC(
+        "ret",
+        {}
+    ));
+
+    muncher.pop_scope();
 
     return instr;
 }

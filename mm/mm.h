@@ -90,6 +90,9 @@ class MM {
     std::vector<std::string> break_point_stack;
     std::vector<std::string> continue_point_stack;
 
+    std::vector<std::pair<std::size_t, std::size_t>> procs;
+    std::vector<std::size_t> globals;
+
 public:
     MM() : temp_ind(0), label_ind(0), break_point_stack({}), continue_point_stack({}) {}
 
@@ -179,6 +182,7 @@ public:
 
         while (ind < instructions.size()) {
             if (instructions[ind].get_opcode() != "proc") {
+                globals.push_back(ind);
                 out << std::string(2, ' ') << instructions[ind++] << ",\n";
                 continue;
             }
@@ -191,7 +195,7 @@ public:
             while (j && instructions[j].get_opcode() != "ret")
                 j--;
 
-            // std::cout << ind << " " << j << " " << instructions.size() << "\n";
+            procs.push_back(std::make_pair(ind + 1, j));
             
             // procedure between [ind, j]
             auto tab = std::string(2, ' ');
@@ -201,7 +205,6 @@ public:
             out << tab << "\"body\": [\n";
             tab += "  ";
             for (std::size_t i = ind + 1; i <= j; i++) {
-                std::cout << instructions[i] << "\n";
                 out << tab << instructions[i];
                 if (i != j) out << ",";
                 out << "\n";
