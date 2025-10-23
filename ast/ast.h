@@ -75,7 +75,9 @@ struct IdentExpression : Expression {
         os << std::string(2 * spaces, ' ') << "[IDENT] " << name << "\n";
     }
 
-    [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher) override;    
+    [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher) override;
+    [[nodiscard]] std::vector<TAC> munch_bool([[maybe_unused]] MM::MM& muncher, std::string label_true, std::string label_false) override;    
+  
 
     void type_check(MM::MM& muncher) override;
 };

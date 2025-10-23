@@ -26,6 +26,24 @@ Expressions
     )};
 }
 
+[[nodiscard]] std::vector<TAC> IdentExpression::munch_bool(MM::MM& muncher, std::string label_true, std::string label_false) {
+    std::vector<TAC> instr;
+
+    instr.push_back(TAC(
+        "jz",
+        { muncher.get_temp(name) },
+        label_false 
+    ));
+
+    instr.push_back(TAC(
+        "jmp",
+        {},
+        label_true 
+    ));
+
+    return instr;
+}
+
 [[nodiscard]] std::vector<TAC> BoolExpression::munch_bool([[maybe_unused]] MM::MM& muncher, std::string label_true, std::string label_false) {
     return {TAC(
         "jmp",
