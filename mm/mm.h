@@ -4,6 +4,8 @@
 #include <cassert>
 #include <vector>
 #include <iostream>
+#include <optional>
+#include <format>
 #include "tac.h"
 #include "../lexer/token.h"
 
@@ -12,7 +14,7 @@ namespace MM {
 enum class Type {
     INT,
     BOOL,
-    NONE
+    NONE,
 };
 
 inline std::map<Type, std::string> type_text = {
@@ -27,15 +29,27 @@ struct Symbol {
     std::string name;
     Type type;
     std::string temp; // temporary
+    bool is_function; // used to identify function symbols
 };
 
 class Scope {
 private:
     std::map<std::string, Symbol> temp_map;
+    std::optional<Type> function_type;
+    std::map<std::pair<std::string, std::size_t>, Type> arg_type;
 
 public:
-    void declare(std::string name, Type type, std::string temp) {
-        temp_map[name] = Symbol{name, type, temp};
+    void declare(std::string name, Type type, std::string temp, bool is_function = false) {
+        temp_map[name] = Symbol{name, type, temp, is_function};
+    }
+
+    // sets the type of the function in which the scope is
+    void set_function_type(Type type) {
+        function_type = type;
+    }
+
+    void set_arg_type(std::string name, std::size_t arg_id, Type type) {
+        arg_type[{name, arg_id}] = type;
     }
 
     [[nodiscard]] std::string get_temp(const std::string& name) const {
@@ -48,6 +62,20 @@ public:
         auto it = temp_map.find(name);
         assert (it != temp_map.end());
         return it->second.type;
+    }
+
+    [[nodiscard]] std::optional<Type> get_current_function_type() const {
+        return function_type;
+    }
+
+    [[nodiscard]] Type get_function_arg_type(std::string name, std::size_t arg_id) const {
+        auto it = arg_type.find({name, arg_id});
+        if (it == arg_type.end()) {
+            throw std::runtime_error(std::format(
+                "Function '{}' called but not defined!", name
+            ));
+        }
+        return it->second;
     }
 
     [[nodiscard]] bool is_declared(const std::string& name) const {
@@ -69,9 +97,9 @@ public:
 
     void pop_scope() { scopes.pop_back(); }
 
-    void push_break_point(std::string& label) { break_point_stack.push_back(label); }
+    void push_break_point(std::string label) { break_point_stack.push_back(label); }
 
-    void push_continue_point(std::string& label) { continue_point_stack.push_back(label); }
+    void push_continue_point(std::string label) { continue_point_stack.push_back(label); }
 
     void pop_break_point() { break_point_stack.pop_back(); }
 
@@ -104,6 +132,7 @@ public:
         return "%p" + std::to_string(temp_ind++);
     }
 
+    // gets the used temporary of the variable with name <name>
     [[nodiscard]] std::string get_temp(const std::string& name) const {
         for (auto it = scopes.rbegin(); it != scopes.rend(); it++) {
             if (it->is_declared(name))
@@ -112,12 +141,27 @@ public:
         throw std::runtime_error("Variable " + name + " undeclared!");
     }
 
+    // gets type of variable with name <name>
     [[nodiscard]] Type get_type(const std::string& name) const {
         for (auto it = scopes.rbegin(); it != scopes.rend(); it++) {
             if (it->is_declared(name))
                 return it->get_type(name);
         }
         throw std::runtime_error("Variable " + name + " undeclared!");
+    }
+
+    // gets the type of the function in which we currently are
+    [[nodiscard]] Type get_curr_function_type() const {
+        for (auto it = scopes.rbegin(); it != scopes.rend(); it++) {
+            if (it->get_current_function_type().has_value())
+                return it->get_current_function_type().value();
+        }
+        throw std::runtime_error("Not in a function's scope!");
+    }
+
+    // gets the type of the function in which we currently are
+    [[nodiscard]] Type get_function_arg_type(std::string name, std::size_t arg_id) const {
+        return scopes.begin()->get_function_arg_type(name, arg_id);
     }
 
     [[nodiscard]] bool is_declared(const std::string& name) const {
@@ -157,6 +201,7 @@ public:
             out << tab << "\"body\": [\n";
             tab += "  ";
             for (std::size_t i = ind + 1; i <= j; i++) {
+                std::cout << instructions[i] << "\n";
                 out << tab << instructions[i];
                 if (i != j) out << ",";
                 out << "\n";

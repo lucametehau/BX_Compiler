@@ -16,6 +16,8 @@ struct AST {
     virtual void print(std::ostream& os, int spaces = 0) = 0;
     
     virtual std::vector<TAC> munch(MM::MM& muncher) = 0;
+
+    virtual void type_check(MM::MM& muncher) = 0;
 };
 
 template<typename T, typename = std::enable_if_t<std::is_base_of_v<AST, T>>> // wtf
@@ -44,6 +46,8 @@ public:
                                                       [[maybe_unused]] std::string label_false) {
         return {};
     }
+
+    virtual void type_check(MM::MM& muncher) override = 0;
 };
 
 struct NumberExpression : Expression {
@@ -58,20 +62,22 @@ struct NumberExpression : Expression {
     }
 
     [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher) override;    
+
+    void type_check([[maybe_unused]] MM::MM& muncher) override;
 };
 
 struct IdentExpression : Expression {
     std::string name;
 
-    IdentExpression(std::string name) : name(name) {
-        // type = MM::Type::INT; // only int variables for now
-    }
+    IdentExpression(std::string name) : name(name) {}
 
     void print(std::ostream& os, int spaces = 0) override {
         os << std::string(2 * spaces, ' ') << "[IDENT] " << name << "\n";
     }
 
-    [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher) override;
+    [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher) override;    
+
+    void type_check(MM::MM& muncher) override;
 };
 
 struct BoolExpression : Expression {
@@ -90,7 +96,9 @@ struct BoolExpression : Expression {
         return {};
     }
 
-    [[nodiscard]] std::vector<TAC> munch_bool([[maybe_unused]] MM::MM& muncher, std::string label_true, std::string label_false) override;
+    [[nodiscard]] std::vector<TAC> munch_bool([[maybe_unused]] MM::MM& muncher, std::string label_true, std::string label_false) override;    
+
+    void type_check([[maybe_unused]] MM::MM& muncher) override;
 };
 
 struct UniOpExpression : Expression {
@@ -108,7 +116,9 @@ struct UniOpExpression : Expression {
     }
 
     [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher) override;
-    [[nodiscard]] std::vector<TAC> munch_bool(MM::MM& muncher, std::string label_true, std::string label_false) override;
+    [[nodiscard]] std::vector<TAC> munch_bool(MM::MM& muncher, std::string label_true, std::string label_false) override;    
+
+    void type_check(MM::MM& muncher) override;
 };
 
 struct BinOpExpression : Expression {
@@ -129,7 +139,9 @@ struct BinOpExpression : Expression {
     }
 
     [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher) override;
-    [[nodiscard]] std::vector<TAC> munch_bool(MM::MM& muncher, std::string label_true, std::string label_false) override;
+    [[nodiscard]] std::vector<TAC> munch_bool(MM::MM& muncher, std::string label_true, std::string label_false) override;    
+
+    void type_check(MM::MM& muncher) override;
 };
 
 /*
@@ -151,6 +163,9 @@ struct Eval : Expression {
     }
 
     [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher) override;
+    [[nodiscard]] std::vector<TAC> munch_bool(MM::MM& muncher, std::string label_true, std::string label_false) override;    
+
+    void type_check(MM::MM& muncher) override;
 };
 
 /*
@@ -159,7 +174,9 @@ Statements
 struct Statement : AST {
     void print(std::ostream& os, int spaces = 0) override = 0;
 
-    [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher) override = 0;
+    [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher) override = 0;    
+
+    void type_check(MM::MM& muncher) override = 0;
 };
 
 struct Param {
@@ -190,7 +207,9 @@ struct VarDecl : Statement {
         }
     }
 
-    [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher) override;
+    [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher) override;    
+
+    void type_check(MM::MM& muncher) override;
 };
 
 struct Assign : Statement {
@@ -205,7 +224,9 @@ struct Assign : Statement {
             expr->print(os, spaces + 1);
     }
 
-    [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher) override;
+    [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher) override;    
+
+    void type_check(MM::MM& muncher) override;
 };
 
 struct Call : Statement {
@@ -219,7 +240,9 @@ struct Call : Statement {
             eval->print(os, spaces + 1);
     }
 
-    [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher) override;
+    [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher) override;    
+
+    void type_check(MM::MM& muncher) override;
 };
 
 struct Jump : Statement {
@@ -227,13 +250,15 @@ struct Jump : Statement {
 
     Jump(Lexer::Token token) : token(token) {}
 
-    [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher) override;
-
     void print(std::ostream& os, int spaces = 0) override {
         os << std::string(2 * spaces, ' ');
         os << (token.is_type(Lexer::CONTINUE) ? "[Continue]" : "[Break]");
         os << "\n";
     }
+
+    [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher) override;    
+
+    void type_check([[maybe_unused]] MM::MM& muncher) override {}
 };
 
 struct Return : Statement {
@@ -246,9 +271,11 @@ struct Return : Statement {
         os << std::string(2 * spaces, ' ') << "[Return]\n";
         if (expr)
             expr->print(os, spaces + 1);
-    }
+    }    
 
     [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher) override;
+
+    void type_check(MM::MM& muncher) override;
 };
 
 /*
@@ -268,7 +295,9 @@ struct Block : Statement {
         }
     }
 
-    [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher) override;
+    [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher) override;    
+
+    void type_check(MM::MM& muncher) override;
 };
 
 /*
@@ -300,7 +329,9 @@ struct IfElse : Statement {
         }
     }
 
-    [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher) override;
+    [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher) override;    
+
+    void type_check(MM::MM& muncher) override;
 };
 
 /*
@@ -321,7 +352,9 @@ struct While : Statement {
         os << std::string(2 * spaces, ' ') << "[Do]\n";
         if (block)
             block->print(os, spaces + 1);
-    }
+    }    
+
+    void type_check(MM::MM& muncher) override;
 };
 
 /*
@@ -356,9 +389,11 @@ struct GlobalVarDecl : Declaration {
 
     void declare(MM::MM& muncher) override {
         for (auto &[name, _] : var_inits) {
-            muncher.scope().declare(name, type, muncher.new_temp());
+            muncher.scope().declare(name, type, "@" + name);
         }
-    }
+    }    
+
+    void type_check(MM::MM& muncher) override;
 };
 
 struct ProcDecl : Declaration {
@@ -386,8 +421,15 @@ struct ProcDecl : Declaration {
 
     void declare(MM::MM& muncher) override {
         std::cout << "Declared " << name << " with type " << return_type.get_text() << "\n";
-        muncher.scope().declare(name, MM::lexer_to_mm_type[return_type.get_type()], muncher.new_temp());
-    }
+        muncher.scope().declare(name, MM::lexer_to_mm_type[return_type.get_type()], muncher.new_temp(), true);
+
+        for (std::size_t i = 0; i < params.size(); i++) {
+            std::cout << "Declared arg " << i << " with type " << params[i].type.get_text() << "\n";
+            muncher.scope().set_arg_type(name, i, MM::lexer_to_mm_type[params[i].type.get_type()]);
+        }
+    }    
+
+    void type_check(MM::MM& muncher) override;
 };
 
 /*
@@ -406,7 +448,9 @@ struct Program {
         }
     }
 
-    [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher);
+    [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher);    
+
+    void type_check(MM::MM& muncher);
 };
 
 }; // namespace AST

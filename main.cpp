@@ -45,6 +45,13 @@ int main(int argc, char** argv) {
 #endif
 
     MM::MM muncher;
+
+    // type check
+    std::cout << "Type checking AST...\n";
+    ast->type_check(muncher);
+
+    // munch instructions
+    std::cout << "Munching AST...\n";
     auto instr = ast->munch(muncher);
 
     muncher.jsonify(file_prefix + ".tac.json", instr);
