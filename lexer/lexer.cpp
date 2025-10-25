@@ -13,6 +13,17 @@ void Lexer::skip_ws() {
             col++;
         pos++;
     }
+
+    // comment start
+    if (pos + 1 < src.size() && src[pos] == src[pos + 1] && src[pos] == '/') {
+        pos += 2;
+        // skip everything until new line
+        while (pos < src.size() && src[pos] != '\n')
+            pos++;
+        row++, col = 1;
+
+        skip_ws();
+    }
 }
 
 [[nodiscard]] Token Lexer::next() {

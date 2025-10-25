@@ -222,7 +222,7 @@ Function/Procedure evaluation
         ));
     }
 
-    if (type == MM::Type::NONE) {
+    if (type == MM::Type::VOID) {
         instr.push_back(TAC(
             "call",
             { "@" + name, std::to_string(params.size()) }
@@ -339,6 +339,11 @@ Statements
     std::vector<TAC> instr;
 
     for (auto &[name, expr] : var_inits) {
+        if (muncher.is_declared(name)) {
+            throw std::runtime_error(std::format(
+                "Variable '{}' already declared in this scope!", name
+            ));
+        }
         auto expr_munch = expr->munch(muncher);
 
         utils::concat(instr, expr_munch);
@@ -556,15 +561,30 @@ Declarations
 [[nodiscard]] std::vector<TAC> GlobalVarDecl::munch(MM::MM& muncher) {
     std::vector<TAC> instr;
     for (auto &[name, expr] : var_inits) {
-        auto expr_munch = expr->munch(muncher);
+        if (type == MM::Type::INT) {
+            auto expr_munch = expr->munch(muncher);
 
-        instr.push_back(TAC(
-            "const",
-            expr_munch.back().get_args(),
-            "@" + name
-        ));
-        // function already declared in Program::munch
-        // muncher.scope().declare(name, type, muncher.new_temp());
+            if (expr_munch.size() != 1 || expr_munch.back().get_opcode() != "const") {
+                throw std::runtime_error(std::format(
+                    "Global variable '{}' can only be initialized with an integer!", name
+                ));
+            }
+
+            instr.push_back(TAC(
+                "const",
+                expr_munch.back().get_args(),
+                "@" + name
+            ));
+        }
+        else {
+            auto expr_munch = expr->munch_bool(muncher, "0", "1");
+
+            instr.push_back(TAC(
+                "const",
+                { expr_munch.back().get_result() },
+                "@" + name
+            ));
+        }
     }
 
     return instr;
@@ -607,10 +627,20 @@ Declarations
 
     utils::concat(instr, block_munch);
 
-    instr.push_back(TAC(
-        "ret",
-        {}
-    ));
+    if (MM::lexer_to_mm_type[return_type.get_type()] == MM::Type::VOID) {
+        // mark the end of a void function
+        instr.push_back(TAC(
+            "ret",
+            {}
+        ));
+    }
+    else {
+        if (instr.back().get_opcode() != "ret") {
+            throw std::runtime_error(std::format(
+                "Function {} has type {}, but has no return!", name, return_type.get_text()
+            ));
+        }
+    }
 
     muncher.pop_scope();
 

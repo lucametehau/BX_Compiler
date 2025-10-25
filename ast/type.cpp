@@ -30,13 +30,19 @@ void UniOpExpression::type_check(MM::MM& muncher) {
     // type checking
     if (op == "!") {
         type = MM::Type::BOOL;
-        if (expr->get_type() != MM::Type::BOOL)
-            throw std::runtime_error("Unary operator " + op + " expected type 'bool' expression!");
+        if (expr->get_type() != MM::Type::BOOL) {
+            throw std::runtime_error(std::format(
+                "Error at row {}, col {}! Unary operator {} expected type 'bool' expression!", token.get_row(), token.get_col(), op
+            ));
+        }
     }
     else {
         type = MM::Type::INT;
-        if (expr->get_type() != MM::Type::INT)
-            throw std::runtime_error("Unary operator " + token.get_text() + " expected type 'int' expression!");
+        if (expr->get_type() != MM::Type::INT) {
+            throw std::runtime_error(std::format(
+                "Error at row {}, col {}! Unary operator {} expected type 'int' expression!", token.get_row(), token.get_col(), op
+            ));
+        }
     }
 }
 
@@ -90,7 +96,7 @@ void Eval::type_check(MM::MM& muncher) {
     if (name != "print")
         type = muncher.get_type(name);
     else {
-        type = MM::Type::NONE;
+        type = MM::Type::VOID;
     }
 
     for (auto &expr : params) {
@@ -154,7 +160,7 @@ void Assign::type_check(MM::MM& muncher) {
 void Call::type_check(MM::MM& muncher) {
     eval->type_check(muncher);
 
-    if (eval->get_type() != MM::Type::NONE) {
+    if (eval->get_type() != MM::Type::VOID) {
         std::cout << std::format(
             "Warning! Called procedure of type '{}' without using the result!", MM::type_text[eval->get_type()]
         ) << "\n";

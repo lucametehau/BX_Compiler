@@ -40,6 +40,12 @@ int main(int argc, char** argv) {
         throw std::runtime_error("Parser failed!");
     }
 
+    if (!parser.finished()) {
+        throw std::runtime_error(std::format(
+            "Parser failed at row {}, col {}!", parser.peek().get_row(), parser.peek().get_col()
+        ));
+    }
+
 #ifdef DEBUG
     ast->print(std::cout);
 #endif

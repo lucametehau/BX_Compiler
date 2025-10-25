@@ -14,15 +14,15 @@ namespace MM {
 enum class Type {
     INT,
     BOOL,
-    NONE,
+    VOID,
 };
 
 inline std::map<Type, std::string> type_text = {
-    {Type::INT, "int"}, {Type::BOOL, "bool"}, {Type::NONE, ""}
+    {Type::INT, "int"}, {Type::BOOL, "bool"}, {Type::VOID, "void"}
 };
 
 inline std::map<Lexer::Type, Type> lexer_to_mm_type = {
-    {Lexer::INT, Type::INT}, {Lexer::BOOL, Type::BOOL}, {Lexer::VOID, Type::NONE}
+    {Lexer::INT, Type::INT}, {Lexer::BOOL, Type::BOOL}, {Lexer::VOID, Type::VOID}
 };
 
 struct Symbol {
@@ -178,11 +178,12 @@ public:
     }
 
     [[nodiscard]] bool is_declared(const std::string& name) const {
-        for (auto it = scopes.rbegin(); it != scopes.rend(); it++) {
-            if (it->is_declared(name))
-                return true;
-        }
-        return false;
+        return !scopes.empty() && scopes.rbegin()->is_declared(name);
+        // for (auto it = scopes.rbegin(); it != scopes.rend(); it++) {
+        //     if (it->is_declared(name))
+        //         return true;
+        // }
+        // return false;
     }
 
     void jsonify(std::string filename, std::vector<TAC>& instructions) {

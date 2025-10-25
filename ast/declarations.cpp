@@ -20,9 +20,13 @@ std::unique_ptr<AST::Declaration> GlobalVarDecl::match(Parser::Parser& parser) {
             return nullptr;
         parser.next();
 
-        auto expr = Expressions::Expression::match(parser);
-        if (!expr)
-            return nullptr;
+        if (!parser.expect(Lexer::NUMBER) && !parser.expect(Lexer::FALSE) && !parser.expect(Lexer::TRUE)) {
+            throw std::runtime_error(std::format(
+                "Global variable '{}' declaration expects a simple integer or boolean expression!", name.get_text()
+            ));
+        }
+
+        auto expr = Expressions::Expression::match_term(parser);
         
         var_inits.push_back(std::make_pair(name.get_text(), std::move(expr)));
         
@@ -31,13 +35,19 @@ std::unique_ptr<AST::Declaration> GlobalVarDecl::match(Parser::Parser& parser) {
         parser.next();
     }
 
-    if (!parser.expect(Lexer::COLON))
-        return nullptr;
+    if (!parser.expect(Lexer::COLON)) {
+        throw std::runtime_error(std::format(
+            "Error at row {}, col {}! Expected type in global variable declaration!", parser.peek().get_row(), parser.peek().get_col()
+        ));
+    }
     parser.next();
 
     auto type = parser.peek();
-    if (!type.is_type(Lexer::INT) && !type.is_type(Lexer::BOOL))
-        return nullptr;
+    if (!type.is_type(Lexer::INT) && !type.is_type(Lexer::BOOL)) {
+        throw std::runtime_error(std::format(
+            "Error at row {}, col {}! Expected type, got '{}', in global variable declaration!", parser.peek().get_row(), parser.peek().get_col(), type.get_text()
+        ));
+    }
     parser.next();
 
     if (!parser.expect(Lexer::SEMICOLON))
@@ -62,7 +72,9 @@ std::unique_ptr<AST::Declaration> ProcDecl::match(Parser::Parser& parser) {
         return nullptr;
     parser.next();
 
-    std::cout << "matching proc " << name.get_text() << "\n";
+#ifdef DEBUG
+    std::cout << "Matching proc " << name.get_text() << "\n";
+#endif
 
     std::vector<AST::Param> params;
 
@@ -80,13 +92,20 @@ std::unique_ptr<AST::Declaration> ProcDecl::match(Parser::Parser& parser) {
             parser.next();
         }
 
-        if (!parser.expect(Lexer::COLON))
-            return nullptr;
+        if (!parser.expect(Lexer::COLON)) {
+            throw std::runtime_error(std::format(
+                "Error at row {}, col {}! Expected type in procedure '{}' argument declaration!", parser.peek().get_row(), parser.peek().get_col(), name.get_text()
+            ));
+        }
+
         parser.next();
 
         auto type = parser.peek();
-        if (!type.is_type(Lexer::INT) && !type.is_type(Lexer::BOOL))
-            return nullptr;
+        if (!type.is_type(Lexer::INT) && !type.is_type(Lexer::BOOL)) {
+            throw std::runtime_error(std::format(
+                "Error at row {}, col {}! Expected type in procedure '{}' argument declaration!", type.get_row(), type.get_col(), name.get_text()
+            ));
+        }
         parser.next();
 
         for (auto &name : names)

@@ -60,7 +60,7 @@ std::unique_ptr<AST::Expression> Expression::match_term(Parser::Parser& parser) 
         return std::make_unique<AST::IdentExpression>(token.get_text());
     }
     
-    if (token.is_type(Lexer::BOOL)) {
+    if (token.is_type(Lexer::TRUE) || token.is_type(Lexer::FALSE)) {
         parser.next();
         return std::make_unique<AST::BoolExpression>(token.get_text());
     }
@@ -92,7 +92,7 @@ std::unique_ptr<AST::Expression> Eval::match(Parser::Parser& parser) {
     parser.next();
     
     std::vector<std::unique_ptr<AST::Expression>> params;
-    while (true) {
+    while (!parser.expect(Lexer::RPAREN)) {
         auto expr = Expressions::Expression::match(parser);
         if (!expr)
             return nullptr;

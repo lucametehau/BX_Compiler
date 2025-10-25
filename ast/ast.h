@@ -33,7 +33,7 @@ Expressions
 
 struct Expression : AST {
 protected:
-    MM::Type type = MM::Type::NONE;
+    MM::Type type = MM::Type::VOID;
 
 public:
     void print(std::ostream& os, int spaces = 0) override = 0;
@@ -391,6 +391,11 @@ struct GlobalVarDecl : Declaration {
 
     void declare(MM::MM& muncher) override {
         for (auto &[name, _] : var_inits) {
+            if (muncher.is_declared(name)) {
+                throw std::runtime_error(std::format(
+                    "Variable '{}' already declared in this scope!", name
+                ));
+            }
             muncher.scope().declare(name, type, "@" + name);
         }
     }    
@@ -422,6 +427,18 @@ struct ProcDecl : Declaration {
     [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher) override;
 
     void declare(MM::MM& muncher) override {
+        if (muncher.is_declared(name)) {
+            throw std::runtime_error(std::format(
+                "Variable '{}' already declared in this scope!", name
+            ));
+        }
+
+        if (name == "main" && return_type.get_type() != Lexer::VOID) {
+            throw std::runtime_error(std::format(
+                "Function main expected 'void' type!"
+            ));
+        }
+
         std::cout << "Declared " << name << " with type " << return_type.get_text() << "\n";
         muncher.scope().declare(name, MM::lexer_to_mm_type[return_type.get_type()], muncher.new_temp(), true);
 
