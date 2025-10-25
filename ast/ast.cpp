@@ -211,14 +211,18 @@ Function/Procedure evaluation
 
             param_temps.push_back(result_temp);
         }
+        param_count++;
     }
+
+    // add params in reverse order
+    reverse(param_temps.begin(), param_temps.end());
 
     // set args only after processing all
     for (auto &temp : param_temps) {
         instr.push_back(TAC(
             "param",
             { temp },
-            std::to_string(param_count++)
+            std::to_string(--param_count)
         ));
     }
 
@@ -298,14 +302,18 @@ Function/Procedure evaluation
 
             param_temps.push_back(result_temp);
         }
+        param_count++;
     }
+
+    // add params in reverse order
+    reverse(param_temps.begin(), param_temps.end());
 
     // set args only after processing all
     for (auto &temp : param_temps) {
         instr.push_back(TAC(
             "param",
             { temp },
-            std::to_string(param_count++)
+            std::to_string(--param_count)
         ));
     }
 

@@ -15,6 +15,7 @@ inline const std::array<std::string, 6> arg_registers = {
 class Assembler {
 private:
     MM::MM muncher;
+    int args_on_stack;
     std::size_t stack_offset, stack_size;
     std::vector<TAC> instr;
     std::map<std::size_t, std::string> param_register;
@@ -37,8 +38,12 @@ private:
         assert(temp[0] == '%');
 
         // parameter
-        if (temp[1] == 'p')
-            return arg_registers[std::stoi(temp.substr(2))];
+        if (temp[1] == 'p') {
+            auto id = std::stoi(temp.substr(2));
+            if (id < 6)
+                return arg_registers[id];
+            return std::to_string(8 * (id - 6 + 2)) + "(%rbp)";
+        }
 
         // normal temporary
         return "-" + std::to_string(8 * (std::stoi(temp.substr(1)) - stack_offset + 1)) + "(%rbp)";
@@ -80,16 +85,16 @@ static const std::map<std::string, std::function<void(std::string, std::string, 
         os << "\tmovq %rdx, " << res << "\n";
     }},
     {"shl", [](std::string a, std::string b, std::string res, std::ofstream& os) {
-        os << "\tmovq " << a << ", %r8\n";
+        os << "\tmovq " << a << ", %r10\n";
         os << "\tmovq " << b << ", %rcx\n";
-        os << "\tsalq %cl, %r8\n";
-        os << "\tmovq %r8, " << res << "\n";
+        os << "\tsalq %cl, %r10\n";
+        os << "\tmovq %r10, " << res << "\n";
     }},
     {"shr", [](std::string a, std::string b, std::string res, std::ofstream& os) {
-        os << "\tmovq " << a << ", %r8\n";
+        os << "\tmovq " << a << ", %r10\n";
         os << "\tmovq " << b << ", %rcx\n";
-        os << "\tsarq %cl, %r8\n";
-        os << "\tmovq %r8, " << res << "\n";
+        os << "\tsarq %cl, %r10\n";
+        os << "\tmovq %r10, " << res << "\n";
     }}
 };
 
