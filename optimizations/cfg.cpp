@@ -100,7 +100,9 @@ void CFG::make_cfg(std::vector<TAC>& instr) {
 [[nodiscard]] std::vector<TAC> CFG::make_tac() {
     std::vector<TAC> instr;
 
+#ifdef DEBUG
     std::cout << "Making TAC from CFG\n";
+#endif
 
     // treat globals separately
     for (auto &global : muncher.get_globals())
@@ -111,7 +113,10 @@ void CFG::make_cfg(std::vector<TAC>& instr) {
         for (auto &t : block_instr)
             instr.push_back(*t), std::cout << *t << "\n";
     }
+
+#ifdef DEBUG
     std::cout << "--------------------------------------------------\n";
+#endif
     // exit(0);
     return instr;
 }
