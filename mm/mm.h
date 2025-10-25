@@ -91,7 +91,7 @@ class MM {
     std::vector<std::string> continue_point_stack;
 
     std::vector<std::pair<std::size_t, std::size_t>> procs;
-    std::vector<std::size_t> globals;
+    std::vector<TAC> globals;
 
 public:
     MM() : temp_ind(0), label_ind(0), break_point_stack({}), continue_point_stack({}) {}
@@ -125,7 +125,7 @@ public:
         return scopes.back();
     }
 
-    [[nodiscard]] std::vector<std::size_t> global_indexes() {
+    [[nodiscard]] std::vector<TAC> get_globals() {
         return globals;
     }
 
@@ -179,22 +179,22 @@ public:
 
     [[nodiscard]] bool is_declared(const std::string& name) const {
         return !scopes.empty() && scopes.rbegin()->is_declared(name);
-        // for (auto it = scopes.rbegin(); it != scopes.rend(); it++) {
-        //     if (it->is_declared(name))
-        //         return true;
-        // }
-        // return false;
     }
 
-    void jsonify(std::string filename, std::vector<TAC>& instructions) {
-        std::ofstream out(filename);
-        out << "[\n";
+    void process(std::vector<TAC>& instructions) {
         std::size_t ind = 0;
+
+        std::cout << "######################################\n";
+        for (auto & tac : instructions)
+            std::cout << tac << "\n";
+        std::cout << "######################################\n";
+
+        globals.clear();
+        procs.clear();
 
         while (ind < instructions.size()) {
             if (instructions[ind].get_opcode() != "proc") {
-                globals.push_back(ind);
-                out << std::string(2, ' ') << instructions[ind++] << ",\n";
+                globals.push_back(instructions[ind++]);
                 continue;
             }
 
@@ -207,28 +207,41 @@ public:
                 j--;
 
             procs.push_back(std::make_pair(ind, j));
-            
-            // procedure between [ind, j]
+
+            ind = j + 1;
+        }
+    }
+
+    void jsonify(std::string filename, std::vector<TAC>& instructions) {
+        process(instructions);
+
+        std::ofstream out(filename);
+        out << "[\n";
+        
+        for (auto &global : get_globals())
+            out << std::string(2, ' ') << global << ",\n";
+
+        for (auto &[start, finish] : procs_indexes()) {
             auto tab = std::string(2, ' ');
             out << tab << "{\n";
             tab += "  ";
-            out << tab << "\"proc\": \"@" << instructions[ind].get_result() << "\",\n";
+            out << tab << "\"proc\": \"@" << instructions[start].get_result() << "\",\n";
             out << tab << "\"body\": [\n";
             tab += "  ";
-            for (std::size_t i = ind + 1; i <= j; i++) {
+            for (std::size_t i = start + 1; i <= finish; i++) {
                 out << tab << instructions[i];
-                if (i != j) out << ",";
+                if (i != finish) out << ",";
                 out << "\n";
             }
             out << "    ]\n";
             out << "  }";
 
-            ind = j + 1;
-            if (ind != instructions.size())
+            if (finish + 1 != instructions.size())
                 out << ",\n";
             else
                 out << "\n";
         }
+
         out << "]\n";
     }
 };
