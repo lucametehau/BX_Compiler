@@ -36,6 +36,7 @@ std::unique_ptr<AST::Expression> Expression::match_term(Parser::Parser& parser) 
 #ifdef DEBUG
     std::cout << parser.peek_pos() << ", " << parser.peek().get_text() << " in expression term matching\n";
 #endif
+
     const auto token = parser.peek();
     if (token.is_type(Lexer::LPAREN)) {
         parser.next();
@@ -52,11 +53,14 @@ std::unique_ptr<AST::Expression> Expression::match_term(Parser::Parser& parser) 
     }
     
     if (token.is_type(Lexer::IDENT)) {
-        parser.next();
+        if (auto eval = Eval::match(parser))
+            return eval;
+        
+        // parser.next() is done in Eval::match
         return std::make_unique<AST::IdentExpression>(token.get_text());
     }
     
-    if (token.is_type(Lexer::BOOL)) {
+    if (token.is_type(Lexer::TRUE) || token.is_type(Lexer::FALSE)) {
         parser.next();
         return std::make_unique<AST::BoolExpression>(token.get_text());
     }
@@ -74,6 +78,37 @@ std::unique_ptr<AST::Expression> Expression::match_term(Parser::Parser& parser) 
     }
 
     return nullptr;
+}
+
+// IDENT(EXPR*)
+std::unique_ptr<AST::Expression> Eval::match(Parser::Parser& parser) {
+    auto name = parser.peek();
+    if (!name.is_type(Lexer::IDENT))
+        return nullptr;
+    parser.next();
+
+    if (!parser.expect(Lexer::LPAREN))
+        return nullptr;
+    parser.next();
+    
+    std::vector<std::unique_ptr<AST::Expression>> params;
+    while (!parser.expect(Lexer::RPAREN)) {
+        auto expr = Expressions::Expression::match(parser);
+        if (!expr)
+            return nullptr;
+
+        params.push_back(std::move(expr));
+        
+        if (!parser.expect(Lexer::COMMA))
+            break;
+        parser.next();
+    }
+    
+    if (!parser.expect(Lexer::RPAREN))
+        return nullptr;
+    parser.next();
+
+    return std::make_unique<AST::Eval>(name.get_text(), std::move(params));
 }
     
 }; // namespace Grammar::Expressions

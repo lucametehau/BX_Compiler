@@ -20,9 +20,10 @@ public:
 
     friend std::ostream& operator << (std::ostream& os, TAC& tac) {
         os << "{\"opcode\": \"" << tac.opcode << "\", \"args\": [";
-        for (std::size_t i = 0; i + 1 < tac.args.size(); i++)
+        for (std::size_t i = 0; i + 1 < tac.args.size(); i++) {
             os << "\"" << tac.args[i] << "\", ";
-        if (!tac.args.empty() && tac.args.back()[0] == '%')
+        }
+        if (!tac.args.empty() && !(tac.args.back()[0] >= '0' && tac.args.back()[0] <= '9'))
             os << "\"" << tac.args.back() << "\"";
         else if (!tac.args.empty())
             os << std::stoi(tac.args.back());

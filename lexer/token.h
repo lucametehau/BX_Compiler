@@ -9,10 +9,11 @@ namespace Lexer {
 
 enum Type {
     IDENT, NUMBER, 
-    DEF, VAR, INT, BOOL, PRINT, 
+    DEF, VAR, RETURN,
+    INT, BOOL, TRUE, FALSE, VOID, 
     IF, ELSE,
     WHILE, BREAK, CONTINUE,
-    LPAREN, RPAREN, LBRACE, RBRACE, COLON, SEMICOLON,
+    LPAREN, RPAREN, LBRACE, RBRACE, COLON, SEMICOLON, COMMA,
     DASH, EQ, PCENT, PLUS, SLASH, STAR,
     TILD, AMP, LTLT, GTGT, HAT, PIPE,
     EQEQ, NEQ, LT, LTE, GT, GTE, ANDAND, OROR, NOT,
@@ -21,7 +22,7 @@ enum Type {
 
 
 enum class Associativity {
-    LEFT, RIGHT, NONE
+    LEFT, RIGHT, VOID
 };
 
 struct Operator {
@@ -35,8 +36,8 @@ inline const std::map<Type, Operator> operators = {
     {Type::PIPE, {10, Associativity::LEFT}},
     {Type::HAT, {20, Associativity::LEFT}},
     {Type::AMP, {30, Associativity::LEFT}},
-    {Type::EQEQ, {33, Associativity::NONE}},
-    {Type::NEQ, {33, Associativity::NONE}},
+    {Type::EQEQ, {33, Associativity::VOID}},
+    {Type::NEQ, {33, Associativity::VOID}},
     {Type::LT, {36, Associativity::LEFT}},
     {Type::LTE, {36, Associativity::LEFT}},
     {Type::GT, {36, Associativity::LEFT}},
@@ -51,12 +52,12 @@ inline const std::map<Type, Operator> operators = {
 };
 
 inline const std::map<std::string, Type> lexing_tokens = {
-    {"(", LPAREN}, {")", RPAREN}, {"{", LBRACE}, {"}", RBRACE},
+    {"(", LPAREN}, {")", RPAREN}, {"{", LBRACE}, {"}", RBRACE}, {",", COMMA},
     {":", COLON}, {";", SEMICOLON}, {"&", AMP}, {"-", DASH},
     {"=", EQ}, {"^", HAT}, {"%", PCENT}, {"|", PIPE},
     {"+", PLUS}, {"/", SLASH}, {"*", STAR}, {"~", TILD},
-    {"def", DEF}, {"var", VAR}, {"int", INT}, {"print", PRINT},
-    {"true", BOOL}, {"false", BOOL}, {"if", IF}, {"else", ELSE},
+    {"def", DEF}, {"var", VAR}, {"int", INT}, {"return", RETURN},
+    {"bool", BOOL}, {"true", TRUE}, {"false", FALSE}, {"if", IF}, {"else", ELSE},
     {"<<", LTLT}, {">>", GTGT}, {"==", EQEQ}, {"!=", NEQ},
     {"<", LT}, {"<=", LTE}, {">", GT}, {">=", GTE},
     {"&&", ANDAND}, {"||", OROR}, {"!", NOT},
@@ -114,7 +115,7 @@ public:
 
     [[nodiscard]] Associativity associativity() const {
         const auto it = operators.find(type);
-        return it == operators.end() ? Associativity::NONE : it->second.assoc; // force quit if non operator
+        return it == operators.end() ? Associativity::VOID : it->second.assoc; // force quit if non operator
     }
 
     friend std::ostream& operator << (std::ostream &os, const Token& token) {

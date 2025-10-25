@@ -4,6 +4,7 @@
 
 namespace Grammar::Statements {
 
+// if (EXPR) BLOCK IFREST
 std::unique_ptr<AST::Statement> IfElse::match(Parser::Parser& parser) {
     if (!parser.expect(Lexer::IF))
         return nullptr;
@@ -32,6 +33,7 @@ std::unique_ptr<AST::Statement> IfElse::match(Parser::Parser& parser) {
     return std::make_unique<AST::IfElse>(std::move(expr), std::move(then_branch));
 }
 
+// else IFELSE | BLOCK
 std::optional<std::unique_ptr<AST::Statement>> IfRest::match(Parser::Parser& parser) {
     if (!parser.expect(Lexer::ELSE))
         return std::nullopt;

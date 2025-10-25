@@ -27,7 +27,11 @@ public:
     }
 
     [[nodiscard]] bool expect(Lexer::Type T) const {
-        return peek().is_type(T);
+        return pos < tokens.size() && peek().is_type(T);
+    }
+
+    [[nodiscard]] bool finished() const {
+        return pos >= tokens.size();
     }
 
     void set_pos(std::size_t _pos) {

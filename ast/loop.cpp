@@ -3,6 +3,7 @@
 
 namespace Grammar::Statements {
 
+// while (EXPR) BLOCK
 std::unique_ptr<AST::Statement> While::match(Parser::Parser& parser) {
     if (!parser.expect(Lexer::WHILE))
         return nullptr;
@@ -27,6 +28,7 @@ std::unique_ptr<AST::Statement> While::match(Parser::Parser& parser) {
     return std::make_unique<AST::While>(std::move(expr), std::move(block));
 }
 
+// break | continue
 std::unique_ptr<AST::Statement> Jump::match(Parser::Parser& parser) {
     auto token = parser.peek();
 

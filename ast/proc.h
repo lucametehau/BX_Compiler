@@ -1,17 +1,13 @@
 #pragma once
-#include "expression.h"
+#include "statement.h"
 
 namespace Grammar::Statements {
 
-struct VarDecl {
+struct Return {
     static std::unique_ptr<AST::Statement> match(Parser::Parser& parser);
 };
 
-struct Assign {
-    static std::unique_ptr<AST::Statement> match(Parser::Parser& parser);
-};
-
-struct Statement {
+struct Call {
     static std::unique_ptr<AST::Statement> match(Parser::Parser& parser);
 };
 
