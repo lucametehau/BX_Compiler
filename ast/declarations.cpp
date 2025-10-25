@@ -91,6 +91,9 @@ std::unique_ptr<AST::Declaration> ProcDecl::match(Parser::Parser& parser) {
 
         for (auto &name : names)
             params.push_back({name, type});
+
+        if (parser.expect(Lexer::COMMA))
+            parser.next();
     }
 
     if (!parser.expect(Lexer::RPAREN))

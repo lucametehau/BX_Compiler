@@ -126,7 +126,7 @@ Expressions
 
     left_munch.push_back(TAC(
         Lexer::jump_code.find(op)->second,
-        { tl },
+        { left_munch.back().get_result() },
         label_true
     ));
 
@@ -147,6 +147,7 @@ Function/Procedure evaluation
 
 [[nodiscard]] std::vector<TAC> Eval::munch(MM::MM& muncher) {
     std::vector<TAC> instr;
+    std::vector<std::string> param_temps;
     std::size_t param_count = 1;
 
     if (name == "print") {
@@ -161,21 +162,17 @@ Function/Procedure evaluation
 
         if (arg_type == MM::Type::INT) {
             auto expr_munch = expr->munch(muncher);
+            auto result_temp = expr_munch.back().get_result();
 
             utils::concat(instr, expr_munch);
-
-            instr.push_back(TAC(
-                "param",
-                { expr_munch.back().get_result() },
-                std::to_string(param_count)
-            ));
-
-            param_count++;
+            param_temps.push_back(result_temp);
         }
-        else if (type == MM::Type::BOOL) {
+        else if (arg_type == MM::Type::BOOL) {
             auto label_true = muncher.new_label();
             auto label_false = muncher.new_label();
+            auto label_end = muncher.new_label();
             auto expr_munch = expr->munch_bool(muncher, label_true, label_false);
+            auto result_temp = muncher.new_temp();
 
             utils::concat(instr, expr_munch);
 
@@ -183,24 +180,46 @@ Function/Procedure evaluation
                 "label",
                 { label_true }
             ));
-            
+
             instr.push_back(TAC(
-                "param",
+                "const",
                 { "1" },
-                std::to_string(param_count)
+                result_temp
+            ));
+
+            instr.push_back(TAC(
+                "jmp",
+                {},
+                label_end
             ));
 
             instr.push_back(TAC(
                 "label",
-                { label_true }
+                { label_false }
             ));
-            
+
             instr.push_back(TAC(
-                "param",
+                "const",
                 { "0" },
-                std::to_string(param_count)
+                result_temp
             ));
+
+            instr.push_back(TAC(
+                "label",
+                { label_end }
+            ));
+
+            param_temps.push_back(result_temp);
         }
+    }
+
+    // set args only after processing all
+    for (auto &temp : param_temps) {
+        instr.push_back(TAC(
+            "param",
+            { temp },
+            std::to_string(param_count++)
+        ));
     }
 
     if (type == MM::Type::NONE) {
@@ -222,28 +241,25 @@ Function/Procedure evaluation
 
 [[nodiscard]] std::vector<TAC> Eval::munch_bool(MM::MM& muncher, std::string label_true, std::string label_false) {
     std::vector<TAC> instr;
+    std::vector<std::string> param_temps;
     std::size_t param_count = 1;
 
     for (auto &expr : params) {
-        auto arg_type = muncher.get_function_arg_type(name, param_count - 1);
+        auto arg_type = expr->get_type();
 
         if (arg_type == MM::Type::INT) {
             auto expr_munch = expr->munch(muncher);
+            auto result_temp = expr_munch.back().get_result();
 
             utils::concat(instr, expr_munch);
-
-            instr.push_back(TAC(
-                "param",
-                { expr_munch.back().get_result() },
-                std::to_string(param_count)
-            ));
-
-            param_count++;
+            param_temps.push_back(result_temp);
         }
-        else if (type == MM::Type::BOOL) {
+        else if (arg_type == MM::Type::BOOL) {
             auto label_true = muncher.new_label();
             auto label_false = muncher.new_label();
+            auto label_end = muncher.new_label();
             auto expr_munch = expr->munch_bool(muncher, label_true, label_false);
+            auto result_temp = muncher.new_temp();
 
             utils::concat(instr, expr_munch);
 
@@ -251,26 +267,46 @@ Function/Procedure evaluation
                 "label",
                 { label_true }
             ));
-            
+
             instr.push_back(TAC(
-                "param",
+                "const",
                 { "1" },
-                std::to_string(param_count)
+                result_temp
+            ));
+
+            instr.push_back(TAC(
+                "jmp",
+                {},
+                label_end
             ));
 
             instr.push_back(TAC(
                 "label",
-                { label_true }
+                { label_false }
             ));
-            
-            instr.push_back(TAC(
-                "param",
-                { "0" },
-                std::to_string(param_count)
-            ));
-        }
 
-        param_count++;
+            instr.push_back(TAC(
+                "const",
+                { "0" },
+                result_temp
+            ));
+
+            instr.push_back(TAC(
+                "label",
+                { label_end }
+            ));
+
+            param_temps.push_back(result_temp);
+        }
+    }
+
+    // set args only after processing all
+    for (auto &temp : param_temps) {
+        instr.push_back(TAC(
+            "param",
+            { temp },
+            std::to_string(param_count++)
+        ));
     }
 
     auto res = muncher.new_temp();
@@ -301,11 +337,12 @@ Statements
 
 [[nodiscard]] std::vector<TAC> VarDecl::munch(MM::MM& muncher) {
     std::vector<TAC> instr;
+
     for (auto &[name, expr] : var_inits) {
         auto expr_munch = expr->munch(muncher);
 
         utils::concat(instr, expr_munch);
-        muncher.scope().declare(name, type, muncher.new_temp());
+        muncher.scope().declare(name, type, expr_munch.back().get_result());
     }
 
     return instr;
@@ -534,18 +571,27 @@ Declarations
 }
 
 [[nodiscard]] std::vector<TAC> ProcDecl::munch(MM::MM& muncher) {
-    std::vector<TAC> instr;
+    std::vector<TAC> instr, args_instr;
     std::vector<std::string> args;
 
     // function already declared in Program::munch
     // muncher.scope().declare(name, MM::lexer_to_mm_type[return_type.get_type()], muncher.new_temp());
     muncher.push_scope();
+    muncher.init_function_scope();
     muncher.scope().set_function_type(MM::lexer_to_mm_type[return_type.get_type()]);
 
     for (auto &param : params) {
         auto [name, type] = param;
         auto arg_type = MM::lexer_to_mm_type[type.get_type()];
-        muncher.scope().declare(name, arg_type, muncher.new_param_temp());
+        auto param_temp = muncher.new_temp();
+
+        // immediately move params into temporaries
+        args_instr.push_back(TAC(
+            "copy",
+            { muncher.new_param_temp() },
+            param_temp
+        ));
+        muncher.scope().declare(name, arg_type, param_temp);
         args.push_back(name);
     }
 
@@ -554,6 +600,8 @@ Declarations
         args,
         name
     ));
+
+    utils::concat(instr, args_instr);
 
     auto block_munch = block->munch(muncher);
 
@@ -587,8 +635,14 @@ Declarations
         instr = expr->munch(muncher);
         args = { instr.back().get_result() };
         instr.push_back(TAC(
+            "copy",
+            args,
+            { muncher.new_temp() }
+        ));
+
+        instr.push_back(TAC(
             "ret",
-            args
+            { instr.back().get_result() }
         ));
     }
     else if (type == MM::Type::BOOL) {
@@ -603,8 +657,14 @@ Declarations
         ));
 
         instr.push_back(TAC(
+            "const",
+            { "1" },
+            { muncher.new_temp() }
+        ));
+
+        instr.push_back(TAC(
             "ret",
-            { "1" }
+            { instr.back().get_result() }
         ));
 
         instr.push_back(TAC(
@@ -613,9 +673,21 @@ Declarations
         ));
 
         instr.push_back(TAC(
-            "ret",
-            { "0" }
+            "const",
+            { "0" },
+            { muncher.new_temp() }
         ));
+
+        instr.push_back(TAC(
+            "ret",
+            { instr.back().get_result() }
+        ));
+    }
+    else {
+        // even with a void function we can do
+        // return fun();
+        // which will just call fun()
+        instr = expr->munch(muncher);
     }
 
     return instr;

@@ -1,48 +1,97 @@
 #include "asm.h"
+#include <iomanip>
 
 namespace ASM {
 
-Assembler::Assembler(std::vector<TAC>& _instr) : instr(_instr) {
+Assembler::Assembler(MM::MM& muncher, std::vector<TAC>& _instr) : muncher(muncher), instr(_instr) {}
+
+void Assembler::assemble(std::ofstream& os) {
+    // global variables
+    std::cout << "Assembling\n";
+    for (auto &ind : muncher.global_indexes()) {
+        auto tac =  instr[ind];
+        auto name = tac.get_result().substr(1);
+        os << "\t.globl " << name << "\n";
+        os << "\t.data\n";
+        os << name << ":" << std::setw(8) << ".quad " << std::stoi(tac.get_arg()) << "\n";
+    }
+
+    // procedures
+    for (auto &[start, finish] : muncher.procs_indexes()) {
+        std::cout << instr[start] << " " << instr[finish] << "\n";
+        auto name = instr[start].get_result();
+        os << "\n";
+        os << "\t.globl " << name << "\n";
+        os << "\t.text\n";
+        os << name << ":\n";
+        assemble_proc(os, start, finish);
+    }
+}
+
+void Assembler::assemble_proc(std::ofstream& os, std::size_t start, std::size_t finish) {
+    // compute needed registers
     stack_size = 0;
-    for (auto &t : instr) {
+
+    std::size_t mn = 1e9, mx = 0;
+    for (auto i = start + 1; i <= finish; i++) {
+        auto t = instr[i];
         auto args = t.get_args();
+
+        std::cout << t << "\n";
         
         for (auto &temp : args) {
-            if (temp[0] == '%' && temp[1] != '.')
-                stack_size = std::max(stack_size, static_cast<std::size_t>(std::stoi(temp.substr(1))));
+            if (temp[0] == '%' && temp[1] != '.' && temp[1] != 'p') {
+                auto num = static_cast<std::size_t>(std::stoi(temp.substr(1)));
+                mn = std::min(mn, num);
+                mx = std::max(mx, num);
+            }
         }
 
         if (t.has_result()) {
             auto result = t.get_result();
-            if (result[0] == '%' && result[1] != '.')
-                stack_size = std::max(stack_size, static_cast<std::size_t>(std::stoi(result.substr(1))));
+            if (result[0] == '%' && result[1] != '.') {
+                auto num = static_cast<std::size_t>(std::stoi(result.substr(1)));
+                mn = std::min(mn, num);
+                mx = std::max(mx, num);
+            }
         }
     }
 
-    stack_size = (stack_size + 1) / 2 * 2;
-}
+    if (mx == 0) mn = mx = 0;
 
-void Assembler::assemble(std::ofstream& os) {
-    os << "\t.text\n";
-    os << "\t.globl main\n";
-    os << "main:\n";
+    stack_size = mx - mn + 1 + instr[start].get_args().size();
+    stack_size = (stack_size + 1) / 2 * 2;
+    stack_offset = mn;
+
+    std::cout << stack_offset << "->" << mx << " ";
+
     os << "\tpushq %rbp\n";
     os << "\tmovq %rsp, %rbp\n";
     os << "\tsubq $" << 8 * stack_size << ", %rsp\n";
 
-    for (auto &t : instr) {
-        assemble_instr(os, t);
+    // for (std::size_t i = 0; i < instr[start].get_args().size(); i++) {
+    //     auto reg = stack_register("%" + std::to_string(mx + 1 + i));
+    //     os << "\tmovq " << arg_registers[i] << ", " << reg << "\n";
+    //     set_param_register(i, reg);
+    // }
+
+    std::cout << stack_size << "\n";
+
+    for (auto i = start + 1; i <= finish; i++) {
+        assemble_instr(os, instr[i]);
     }
 
-    os << "\tmovq %rbp, %rsp\n";
-    os << "\tpopq %rbp\n";
-    os << "\tmovq $0, %rax\n";
-    os << "\tretq\n";
+    // os << "\tmovq %rbp, %rsp\n";
+    // os << "\tpopq %rbp\n";
+    // os << "\tmovq $0, %rax\n";
+    // os << "\tretq\n";
 }
 
 void Assembler::assemble_instr(std::ofstream& os, TAC& tac) {
     auto op = tac.get_opcode();
     auto args = tac.get_args();
+
+    std::cout << tac << "\n";
 
     if (op == "label") {
         assert(args.size() == 1);
@@ -58,16 +107,10 @@ void Assembler::assemble_instr(std::ofstream& os, TAC& tac) {
         os << "\tmovq %r8, " << stack_register(tac.get_result()) << "\n";
     }
     else if (op == "call") {
-        assert(args.size() == 1);
         os << "\tcallq " << args[0].substr(1) << "\n";
-        return;
-#ifdef _WIN32
-        os << "\tmovq " << stack_register(args[0]) << ", %rcx\n";
-        os << "\tcallq bx_print_int\n";
-#else
-        os << "\tmovq " << stack_register(args[0]) << ", %rdi\n";
-        os << "\tcallq bx_print_int\n";
-#endif
+
+        if (tac.has_result())
+            os << "\tmovq %rax, " << stack_register(tac.get_result()) << "\n";
     }
     else if (op == "jmp") {
         assert(args.size() == 1 || (args.empty() && tac.has_result()));
@@ -99,7 +142,16 @@ void Assembler::assemble_instr(std::ofstream& os, TAC& tac) {
         // nothing for now, will see
         if (!args.empty())
             os << "\tmovq " << stack_register(args[0]) << ", %rax\n";
-        os << "\tret\n";
+        else
+            os << "\tmovq $0, %rax\n";
+        os << "\tmovq %rbp, %rsp\n";
+        os << "\tpopq %rbp\n";
+        os << "\tretq\n";
+    }
+    else if (op == "param") {
+        auto id = std::stoi(tac.get_result());
+
+        os << "\tmovq " << stack_register(args[0]) << ", " << arg_registers[id - 1] << "\n";
     }
     else {
         throw std::runtime_error("Unrecognized operator " + op);

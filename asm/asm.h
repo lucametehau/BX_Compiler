@@ -8,11 +8,16 @@
 
 namespace ASM {
 
+inline const std::array<std::string, 6> arg_registers = {
+    "%rdi", "%rsi", "%rdx", "%rcx", "%r8", "%r9"
+};
+
 class Assembler {
 private:
     MM::MM muncher;
-    std::size_t stack_size;
+    std::size_t stack_offset, stack_size;
     std::vector<TAC> instr;
+    std::map<std::size_t, std::string> param_register;
 
 public:
     Assembler(MM::MM& muncher, std::vector<TAC>& _instr);
@@ -20,10 +25,26 @@ public:
     void assemble(std::ofstream& os);
 
 private:
-    std::string stack_register(std::string temp) {
-        assert(temp[0] == '%');
-        return "-" + std::to_string(8 * std::stoi(temp.substr(1))) + "(%rbp)";
+    void set_param_register(std::size_t id, std::string reg) {
+        param_register[id] = reg;
     }
+
+    std::string stack_register(std::string temp) {
+        // global variable
+        if (temp[0] == '@')
+            return temp.substr(1) + "(%rip)";
+
+        assert(temp[0] == '%');
+
+        // parameter
+        if (temp[1] == 'p')
+            return arg_registers[std::stoi(temp.substr(2))];
+
+        // normal temporary
+        return "-" + std::to_string(8 * (std::stoi(temp.substr(1)) - stack_offset + 1)) + "(%rbp)";
+    }
+
+    void assemble_proc(std::ofstream& os, std::size_t start, std::size_t finish);
 
     void assemble_instr(std::ofstream& os, TAC& tac);
 };

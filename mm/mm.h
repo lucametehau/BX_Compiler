@@ -85,7 +85,7 @@ public:
 };
 
 class MM {
-    int temp_ind, label_ind;
+    int temp_ind, label_ind, param_temp_ind;
     std::vector<Scope> scopes;
     std::vector<std::string> break_point_stack;
     std::vector<std::string> continue_point_stack;
@@ -108,6 +108,8 @@ public:
 
     void pop_continue_point() { continue_point_stack.pop_back(); }
 
+    void init_function_scope() { param_temp_ind = 0; }
+
     [[nodiscard]] std::string get_break_point() const {
         assert(!break_point_stack.empty());
         return break_point_stack.back();
@@ -123,6 +125,14 @@ public:
         return scopes.back();
     }
 
+    [[nodiscard]] std::vector<std::size_t> global_indexes() {
+        return globals;
+    }
+
+    [[nodiscard]] std::vector<std::pair<std::size_t, std::size_t>> procs_indexes() {
+        return procs;
+    }
+
     [[nodiscard]] std::string new_temp()  {
         return "%" + std::to_string(temp_ind++);
     }
@@ -132,7 +142,7 @@ public:
     }
 
     [[nodiscard]] std::string new_param_temp() {
-        return "%p" + std::to_string(temp_ind++);
+        return "%p" + std::to_string(param_temp_ind++);
     }
 
     // gets the used temporary of the variable with name <name>
@@ -195,7 +205,7 @@ public:
             while (j && instructions[j].get_opcode() != "ret")
                 j--;
 
-            procs.push_back(std::make_pair(ind + 1, j));
+            procs.push_back(std::make_pair(ind, j));
             
             // procedure between [ind, j]
             auto tab = std::string(2, ' ');
