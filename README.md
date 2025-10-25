@@ -17,19 +17,18 @@ gcc -o file.exe file.s utils/bx_runtime.c
 ./file.exe
 ```
 
-Since `bx_runtime.c` contains the print function we are gonna use.
+Since `bx_runtime.c` contains the print functions we are gonna use.
 
 # Features
 
 There aren't many features available, some are WIP:
 - Integers
-- Booleans (`true`, `false` in conditions only)
-- Variables (only integers)
-- Assignments (only integers)
-- Printing (only integers)
+- Booleans
+- Variables
+- Assignments
+- Printing
+- Functions/Procedures
 - If-Else blocks
 - While, Break, Continue
 - Translates directly to ASM
-
-## TODO:
-- Support comments (`// or /* or #`?)
+- Supports comments (`// or /* or #`?)
