@@ -59,32 +59,36 @@ int main(int argc, char** argv) {
     // munch instructions
     std::cout << "Munching AST...\n";
     auto instr = ast->munch(muncher);
-
     muncher.jsonify(file_prefix + ".tac.json", instr); 
     
+    // assembling
+    std::cout << "Assembling...\n";
     std::ofstream asm_file(file_prefix + ".s");
     ASM::Assembler assembler(muncher, instr);
     assembler.assemble(asm_file);
 
-    // auto cfg = Opt::CFG();
-    // cfg.make_cfg(instr);
+    std::cout << "Creating Control Flow Graph...\n";
 
-    // for (int i = 1; i <= 10; i++) {
-    //     cfg.jt_seq_uncond();
+    auto cfg = Opt::CFG(muncher);
+    cfg.make_cfg(instr);
 
-    //     std::vector<TAC> new_instr = cfg.make_tac();
+    for (int i = 1; i <= 1; i++) {
+        cfg.jt_seq_uncond();
 
-    //     std::ofstream asm_file(file_prefix + ".s");
-    //     ASM::Assembler assembler(new_instr);
-    //     assembler.assemble(asm_file);
+        std::vector<TAC> new_instr = cfg.make_tac();
 
-    //     muncher.jsonify(file_prefix + ".opt1.tac.json", new_instr);
+        muncher.process(new_instr);
+        muncher.jsonify(file_prefix + ".opt1.tac.json", new_instr);
 
-    //     cfg.jt_cond_to_uncond();
+        std::ofstream asm_file(file_prefix + "opt.s");
+        ASM::Assembler assembler(muncher, new_instr);
+        assembler.assemble(asm_file);
 
-    //     std::vector<TAC> new_new_instr = cfg.make_tac();
+        cfg.jt_cond_to_uncond();
 
-    //     muncher.jsonify(file_prefix + ".opt2.tac.json", new_new_instr);
-    // }
+        std::vector<TAC> new_new_instr = cfg.make_tac();
+
+        muncher.jsonify(file_prefix + ".opt2.tac.json", new_new_instr);
+    }
     return 0;
 }

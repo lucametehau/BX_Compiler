@@ -1,5 +1,6 @@
 #pragma once
 #include "../mm/tac.h"
+#include "../mm/mm.h"
 #include <set>
 #include <cassert>
 #include <memory>
@@ -11,10 +12,11 @@ private:
     std::vector<std::shared_ptr<TAC>> instr;
     std::string label;
     std::vector<std::shared_ptr<TAC>> jumps; 
+    bool start;
 
 public:
     Block() = default;
-    Block(std::vector<std::shared_ptr<TAC>>& instr);
+    Block(std::vector<std::shared_ptr<TAC>>& instr, bool start);
 
     [[nodiscard]] std::vector<std::shared_ptr<TAC>> get_jumps() {
         return jumps;
@@ -27,6 +29,10 @@ public:
     [[nodiscard]] std::vector<std::shared_ptr<TAC>>& get_instr() {
         return instr;
     }
+
+    [[nodiscard]] bool is_starting() const {
+        return start;
+    }
 };
 
 class CFG {
@@ -34,13 +40,14 @@ private:
     std::vector<Block> blocks;
     std::map<std::string, std::map<std::string, std::shared_ptr<TAC>>> graph;
     std::map<std::string, std::string> original_temp;
+    MM::MM& muncher;
 
     [[nodiscard]] std::vector<Block> make_blocks(std::vector<TAC>& instr);
 
     void dfs(std::string node, std::set<std::string>& vis);
 
 public:
-    CFG() = default;
+    CFG(MM::MM& muncher) : muncher(muncher) {};
 
     void make_cfg(std::vector<TAC>& instr);
 

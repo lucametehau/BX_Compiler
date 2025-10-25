@@ -66,9 +66,7 @@ Expressions
 }
 
 [[nodiscard]] std::vector<TAC> UniOpExpression::munch_bool(MM::MM& muncher, std::string label_true, std::string label_false) {
-    std::vector<TAC> expr_munch = expr->munch_bool(muncher, label_false, label_true);
-
-    return expr_munch;
+    return expr->munch_bool(muncher, label_false, label_true);
 }
 
 [[nodiscard]] std::vector<TAC> BinOpExpression::munch(MM::MM& muncher) {
@@ -118,15 +116,16 @@ Expressions
 
     utils::concat(left_munch, right_munch);
     
+    auto res_temp = muncher.new_temp();
     left_munch.push_back(TAC(
         "sub",
         { tl, tr },
-        muncher.new_temp()
+        res_temp
     ));
 
     left_munch.push_back(TAC(
         Lexer::jump_code.find(op)->second,
-        { left_munch.back().get_result() },
+        { res_temp },
         label_true
     ));
 
@@ -143,7 +142,6 @@ Expressions
 /*
 Function/Procedure evaluation
 */
-
 
 [[nodiscard]] std::vector<TAC> Eval::munch(MM::MM& muncher) {
     std::vector<TAC> instr;
@@ -421,9 +419,7 @@ Statements
 }
 
 [[nodiscard]] std::vector<TAC> Call::munch(MM::MM& muncher) {
-    auto instr = eval->munch(muncher);
-
-    return instr;
+    return eval->munch(muncher);
 }
 
 [[nodiscard]] std::vector<TAC> Jump::munch(MM::MM& muncher) {
@@ -627,6 +623,12 @@ Declarations
         "proc",
         args,
         name
+    ));
+
+    // useful for creating our CFG
+    instr.push_back(TAC(
+        "label",
+        { muncher.new_label() }
     ));
 
     utils::concat(instr, args_instr);

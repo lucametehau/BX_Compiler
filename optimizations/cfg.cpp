@@ -3,9 +3,9 @@
 
 namespace Opt {
 
-Block::Block(std::vector<std::shared_ptr<TAC>>& instr) : instr(instr) {
-    assert(instr[0]->get_opcode() == "label");
-    label = instr[0]->get_arg();
+Block::Block(std::vector<std::shared_ptr<TAC>>& instr, bool start) : instr(instr), start(start) {
+    assert(instr[start]->get_opcode() == "label");
+    label = instr[start]->get_arg();
     jumps.clear();
 
     // connections of current block
@@ -17,56 +17,62 @@ Block::Block(std::vector<std::shared_ptr<TAC>>& instr) : instr(instr) {
 }
 
 [[nodiscard]] std::vector<Block> CFG::make_blocks(std::vector<TAC>& instr) {
-    std::size_t i = 0;
     std::vector<Block> blocks;
 
-    while (i < instr.size()) {
-        assert(instr[i].get_opcode() == "label");
-        std::vector<std::shared_ptr<TAC>> block_instr;
+    for (auto &[start, finish] : muncher.procs_indexes()) {
+        std::size_t i = start + 1;
+        while (i <= finish) {
+            assert(instr[i].get_opcode() == "label");
+            std::vector<std::shared_ptr<TAC>> block_instr;
 
-#ifdef DEBUG
-        std::cerr << i << " start for block\n";
-#endif
+            if (i == start + 1)
+                block_instr.push_back(std::make_shared<TAC>(instr[start]));
 
-        auto j = i + 1;
-        while (j < instr.size() && instr[j].get_opcode() != "label")
-            j++;
+    #ifdef DEBUG
+            std::cerr << instr[i] << ", " << i << " start for block\n";
+    #endif
 
-#ifdef DEBUG
-        std::cerr << j << " end for block\n";
-#endif
+            auto j = i + 1;
+            while (j <= finish && instr[j].get_opcode() != "label")
+                j++;
 
-        // probably a block between [i, j)
-        while (i < j)
-            block_instr.push_back(std::make_shared<TAC>(instr[i++]));
-        
-        // missing jmp at the end of the block
-        auto last_instr = block_instr.back()->get_opcode();
-        if (last_instr != "jmp" && last_instr != "ret") {
-            block_instr.push_back(std::make_shared<TAC>(
-                "jmp",
-                std::vector<std::string>{},
-                instr[j].get_arg()
-            ));
+    #ifdef DEBUG
+            std::cerr << instr[j - 1] << ", " << j - 1 << " end for block\n";
+    #endif
+
+            // probably a block between [i, j)
+            while (i < j)
+                block_instr.push_back(std::make_shared<TAC>(instr[i++]));
+            
+            // missing jmp at the end of the block
+            auto last_instr = block_instr.back()->get_opcode();
+            if (last_instr != "jmp" && last_instr != "ret") {
+                block_instr.push_back(std::make_shared<TAC>(
+                    "jmp",
+                    std::vector<std::string>{},
+                    instr[j].get_arg()
+                ));
+            }
+
+            blocks.push_back(Block(block_instr, block_instr[0]->get_opcode() == "proc"));
         }
 
-        blocks.push_back(Block(block_instr));
-    }
+        // build the inheritance tree of temporaries
+        for (i = start + 1; i <= finish; i++) {
+            auto t = instr[i];
+            auto op = t.get_opcode();
 
-    // build the inheritance tree of temporaries
-    for (auto &t : instr) {
-        auto op = t.get_opcode();
-
-        // normal operations between temporaries only
-        if (op != "label" && op != "jmp" && ASM::jumps.find(op) == ASM::jumps.end() && t.has_result()) {
-            if (op == "copy") {
-                auto arg = t.get_arg();
-                if (original_temp.find(arg) == original_temp.end())
-                    original_temp[arg] = arg;
-                original_temp[t.get_result()] = original_temp[arg];
+            // normal operations between temporaries only
+            if (op != "label" && op != "jmp" && ASM::jumps.find(op) == ASM::jumps.end() && t.has_result()) {
+                if (op == "copy") {
+                    auto arg = t.get_arg();
+                    if (original_temp.find(arg) == original_temp.end())
+                        original_temp[arg] = arg;
+                    original_temp[t.get_result()] = original_temp[arg];
+                }
+                else if (original_temp.find(t.get_result()) == original_temp.end())
+                    original_temp[t.get_result()] = t.get_result();
             }
-            else if (original_temp.find(t.get_result()) == original_temp.end())
-                original_temp[t.get_result()] = t.get_result();
         }
     }
 
@@ -93,11 +99,25 @@ void CFG::make_cfg(std::vector<TAC>& instr) {
 
 [[nodiscard]] std::vector<TAC> CFG::make_tac() {
     std::vector<TAC> instr;
+
+#ifdef DEBUG
+    std::cout << "Making TAC from CFG\n";
+#endif
+
+    // treat globals separately
+    for (auto &global : muncher.get_globals())
+        instr.push_back(global);
+
     for (auto &block : blocks) {
         auto block_instr = block.get_instr();
         for (auto &t : block_instr)
-            instr.push_back(*t);
+            instr.push_back(*t), std::cout << *t << "\n";
     }
+
+#ifdef DEBUG
+    std::cout << "--------------------------------------------------\n";
+#endif
+    // exit(0);
     return instr;
 }
 
@@ -113,13 +133,23 @@ void CFG::dfs(std::string label, std::set<std::string>& vis) {
 
 void CFG::uce() {
     std::set<std::string> vis;
-    auto root = blocks[0].get_label();
 
-#ifdef DEBUG
-    std::cout << "Removing unreachable blocks from " << root << "\n";
-#endif
+    std::size_t ind = 0;
+    for (std::size_t i = 0; i < muncher.procs_indexes().size(); i++) {
+        // find block matching the starting label of the procedure
+        while (ind < blocks.size() && !blocks[ind].is_starting())
+            ind++;
 
-    dfs(root, vis);
+        auto root = blocks[ind].get_label();
+
+    #ifdef DEBUG
+        std::cout << "Removing unreachable blocks from " << root << "\n";
+    #endif
+
+        dfs(root, vis);
+
+        ind++;
+    }
 
     std::vector<Block> temp_blocks;
     for (auto &block : blocks) {

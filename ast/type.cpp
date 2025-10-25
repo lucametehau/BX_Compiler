@@ -26,7 +26,6 @@ void UniOpExpression::type_check(MM::MM& muncher) {
     auto op = token.get_text();
     expr->type_check(muncher);
     
-
     // type checking
     if (op == "!") {
         type = MM::Type::BOOL;
@@ -136,10 +135,9 @@ void VarDecl::type_check(MM::MM& muncher) {
 
         if (expr->get_type() != type) {
             throw std::runtime_error(std::format(
-                "Expected Variable Declaration of type {}, got type {}!", MM::type_text[type], MM::type_text[expr->get_type()]
+                "Expected variable declaration of type {}, got type {}!", MM::type_text[type], MM::type_text[expr->get_type()]
             ));
         }
-
         muncher.scope().declare(name, type, muncher.new_temp());
     }
 }
@@ -240,15 +238,10 @@ void GlobalVarDecl::type_check(MM::MM& muncher) {
                 "Expected Variable Declaration of type {}, got type {}!", MM::type_text[type], MM::type_text[expr->get_type()]
             ));
         }
-
-        // function already declared in Program::munch
-        // muncher.scope().declare(name, type, muncher.new_temp());
     }
 }
 
 void ProcDecl::type_check(MM::MM& muncher) {
-    // function already declared in Program::munch
-    // muncher.scope().declare(name, MM::lexer_to_mm_type[return_type.get_type()], muncher.new_temp());
     muncher.scope().set_function_type(MM::lexer_to_mm_type[return_type.get_type()]);
 
     for (auto &param : params) {
