@@ -8,7 +8,6 @@ Assembler::Assembler(MM::MM& muncher, std::vector<TAC>& _instr) : muncher(munche
 void Assembler::assemble(std::ofstream& os) {
     // global variables
     for (auto &tac : muncher.get_globals()) {
-        std::cout << tac << "\n";
         auto name = tac.get_result().substr(1);
         os << "\t.globl " << name << "\n";
         os << "\t.data\n";

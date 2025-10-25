@@ -67,7 +67,7 @@ int main(int argc, char** argv) {
     ASM::Assembler assembler(muncher, instr);
     assembler.assemble(asm_file);
 
-    std::cout << "Creating Control Flow Graph\n";
+    std::cout << "Creating Control Flow Graph...\n";
 
     auto cfg = Opt::CFG(muncher);
     cfg.make_cfg(instr);

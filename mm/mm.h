@@ -184,11 +184,6 @@ public:
     void process(std::vector<TAC>& instructions) {
         std::size_t ind = 0;
 
-        std::cout << "######################################\n";
-        for (auto & tac : instructions)
-            std::cout << tac << "\n";
-        std::cout << "######################################\n";
-
         globals.clear();
         procs.clear();
 
