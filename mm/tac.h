@@ -48,6 +48,10 @@ public:
         return args;
     }
 
+    [[nodiscard]] std::vector<std::string> &get_args() {
+        return args;
+    }
+
     [[nodiscard]] std::string get_arg() const {
         assert(!args.empty());
         return args[0];

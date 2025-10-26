@@ -3,19 +3,6 @@
 
 namespace Opt {
 
-Block::Block(std::vector<std::shared_ptr<TAC>>& instr, bool start) : instr(instr), start(start) {
-    assert(instr[start]->get_opcode() == "label");
-    label = instr[start]->get_arg();
-    jumps.clear();
-
-    // connections of current block
-    for (auto &t : instr) {
-        auto op = t->get_opcode();
-        if (ASM::jumps.find(op) != ASM::jumps.end() || op == "jmp")
-            jumps.push_back(t);
-    }
-}
-
 [[nodiscard]] std::vector<Block> CFG::make_blocks(std::vector<TAC>& instr) {
     std::vector<Block> blocks;
 
@@ -110,8 +97,12 @@ void CFG::make_cfg(std::vector<TAC>& instr) {
 
     for (auto &block : blocks) {
         auto block_instr = block.get_instr();
-        for (auto &t : block_instr)
-            instr.push_back(*t), std::cout << *t << "\n";
+        for (auto &t : block_instr) {
+            instr.push_back(*t);
+#ifdef DEBUG
+            std::cout << *t << "\n";
+#endif
+        }
     }
 
 #ifdef DEBUG
@@ -121,7 +112,7 @@ void CFG::make_cfg(std::vector<TAC>& instr) {
     return instr;
 }
 
-void CFG::dfs(std::string label, std::set<std::string>& vis) {
+void CFG::dfs(Label label, std::set<Label>& vis) {
     vis.insert(label);
 
     for (auto &[child_label, edge] : graph[label]) {
@@ -132,7 +123,7 @@ void CFG::dfs(std::string label, std::set<std::string>& vis) {
 }
 
 void CFG::uce() {
-    std::set<std::string> vis;
+    std::set<Label> vis;
 
     std::size_t ind = 0;
     for (std::size_t i = 0; i < muncher.procs_indexes().size(); i++) {
@@ -164,6 +155,67 @@ void CFG::uce() {
     }
 
     blocks = std::move(temp_blocks);
+}
+
+void CFG::coalesce() {
+    bool found = true;
+    while (found) {
+        found = false;
+
+        // compute in degrees
+        std::map<Label, int> in_deg;
+        for (auto &block : blocks) {
+            auto label = block.get_label();
+
+            for (auto [child_node, tac] : graph[label]) {
+                in_deg[child_node]++;
+            }
+        }
+
+        for (auto &block : blocks) {
+            auto label = block.get_label();
+
+            if (graph[label].size() != 1)
+                continue;
+
+            auto [child_label, tac] = *graph[label].begin();
+
+            if (in_deg[child_label] != 1)
+                continue;
+
+            // we have
+            // L0: ....
+            //    jmp L1
+            // L1: ....
+            // and we can only reach L1 from L0
+            // hence we can coalesce the blocks
+
+            // remove jmp at the end
+            block.get_instr().pop_back();
+
+            auto child_instr = get_block(child_label).get_instr();
+
+            // remove label at thee beginning
+            child_instr.erase(child_instr.begin());
+            utils::concat(block.get_instr(), child_instr);
+
+            // assign all sons of child_label to current label
+            graph[label].erase(child_label);
+            for (auto &[child_label, tac] : graph[child_label])
+                graph[label][child_label] = tac;
+            graph[child_label].clear();
+
+#ifdef DEBUG
+            std::cout << "Coalesced " << label << "->" << child_label << "\n";
+#endif
+            
+            found = true;
+            break;
+        }
+
+        // cleanup (maybe not needed every time?)
+        uce();
+    }
 }
 
 void CFG::jt_seq_uncond() {
@@ -251,6 +303,85 @@ void CFG::jt_cond_to_uncond() {
 
         // cleanup (maybe not needed every time?)
         uce();
+    }
+}
+
+void CFG::build_liveness() {
+    std::map<Label, Set> live_in_block, live_out_block;
+    std::map<Label, Set> def_block, use_block;
+
+    // build def and use sets
+    for (auto &block : blocks) {
+        block.build_def_use(def_block[block.get_label()], use_block[block.get_label()]);
+    }
+
+    // liveness of each block
+    {
+        bool changed = true;
+        while (changed) {
+            changed = false;
+            for (auto it = blocks.rbegin(); it != blocks.rend(); it++) {
+                auto &block = *it;
+                auto label = block.get_label();
+                auto temp_in = live_in_block[label];
+                auto temp_out = live_out_block[label];
+
+                live_out_block[label] = Set();
+                for (auto &[succ_label, _] : graph[label]) {
+                    live_out_block[label] = live_out_block[label].join(live_in_block[succ_label]);
+                }
+
+                live_in_block[label] = use_block[label].join(live_out_block[label].minus(def_block[label]));
+                if (live_in_block[label] != temp_in || live_out_block[label] != temp_out)
+                    changed = true;
+            }
+        }
+    }
+
+    // liveness of each instruction
+    for (auto &block : blocks) {
+        block.build_liveness(live_in_block[block.get_label()], live_out_block[block.get_label()]);
+    }
+}
+
+void CFG::copy_propagation() {
+    for (auto &block : blocks) {
+        auto &instr = block.get_instr();
+        for (std::size_t i = 0; i < instr.size(); i++) {
+            auto tac = instr[i];
+            if (tac->get_opcode() != "copy")
+                continue;
+
+            auto from = tac->get_arg();
+            auto to = tac->get_result();
+
+            // we are copying a function parameter
+            // don't modify
+            if (from[1] == 'p')
+                continue;
+
+            for (std::size_t j = i + 1; j < instr.size(); j++) {
+                auto curr_tac = instr[j];
+
+                // instruction changes our temporaries
+                if (curr_tac->has_result() && (curr_tac->get_result() == from || curr_tac->get_result() == to))
+                    break;
+
+                for (auto &arg : curr_tac->get_args()) {
+                    if (arg == to) {
+                        arg = from;
+                        break;
+                    }
+                }
+            }
+        }
+    }
+}
+
+void CFG::eliminate_dead_copies() {
+    build_liveness();
+    for (auto &block : blocks) {
+        block.eliminate_dead_copies();
     }
 }
 
