@@ -439,11 +439,15 @@ struct ProcDecl : Declaration {
             ));
         }
 
+#ifdef DEBUG
         std::cout << "Declared " << name << " with type " << return_type.get_text() << "\n";
+#endif
         muncher.scope().declare(name, MM::lexer_to_mm_type[return_type.get_type()], muncher.new_temp(), true);
 
         for (std::size_t i = 0; i < params.size(); i++) {
+#ifdef DEBUG
             std::cout << "Declared arg " << i << " with type " << params[i].type.get_text() << "\n";
+#endif
             muncher.scope().set_arg_type(name, i, MM::lexer_to_mm_type[params[i].type.get_type()]);
         }
     }    

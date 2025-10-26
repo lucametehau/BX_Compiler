@@ -67,28 +67,13 @@ int main(int argc, char** argv) {
     ASM::Assembler assembler(muncher, instr);
     assembler.assemble(asm_file);
 
-    std::cout << "Creating Control Flow Graph...\n";
-
-    auto cfg = Opt::CFG(muncher);
-    cfg.make_cfg(instr);
+    std::cout << "Applying optimizations...\n";
 
     for (int i = 1; i <= 1; i++) {
-        cfg.jt_seq_uncond();
-
-        std::vector<TAC> new_instr = cfg.make_tac();
-
-        muncher.process(new_instr);
-        muncher.jsonify(file_prefix + ".opt1.tac.json", new_instr);
-
-        std::ofstream asm_file(file_prefix + "opt.s");
-        ASM::Assembler assembler(muncher, new_instr);
-        assembler.assemble(asm_file);
-
-        cfg.jt_cond_to_uncond();
-
-        std::vector<TAC> new_new_instr = cfg.make_tac();
-
-        muncher.jsonify(file_prefix + ".opt2.tac.json", new_new_instr);
+        Opt::optimize<Opt::OptimizationType::DEAD_COPY_REMOVAL>(muncher, instr, file_prefix);
+        Opt::optimize<Opt::OptimizationType::JT_SEQ_UNCOND>(muncher, instr, file_prefix);
+        Opt::optimize<Opt::OptimizationType::JT_COND_TO_UNCOND>(muncher, instr, file_prefix);
+        Opt::optimize<Opt::OptimizationType::COALESCE>(muncher, instr, file_prefix);
     }
     return 0;
 }
