@@ -375,6 +375,57 @@ void CFG::copy_propagation() {
                 }
             }
         }
+
+        for (int i = (int)instr.size() - 1; i >= 0; i--) {
+            auto tac = instr[i];
+            if (tac->get_opcode() != "copy")
+                continue;
+
+            auto from = tac->get_arg();
+            auto to = tac->get_result();
+
+            // we are copying a function parameter
+            // don't modify
+            if (from[1] == 'p')
+                continue;
+
+            int idx = -1;
+            bool can_replace = true;
+            for (int j = i - 1; j >= 0; j--) {
+                auto curr_tac = instr[j];
+
+                // instruction changes our temporaries
+                if (curr_tac->has_result() && curr_tac->get_result() == from) {
+                    idx = j;
+                    curr_tac->set_result(to);
+                    break;
+                }
+
+                if (curr_tac->has_result() && curr_tac->get_result() == to)
+                    break;
+
+                // cant replace if we change 'to'
+                for (auto &arg : curr_tac->get_args()) {
+                    if (arg == to) {
+                        can_replace = false;
+                        break;
+                    }
+                }
+            }
+
+            if (!can_replace || idx == -1)
+                continue;
+
+            // replace all 'from' arguments with 'to'
+            for (int j = idx + 1; j < i; j++) {
+                for (auto &arg : instr[j]->get_args()) {
+                    if (arg == from)
+                        arg = to;
+                }
+            }
+
+            instr.erase(instr.begin() + i);
+        }
     }
 }
 

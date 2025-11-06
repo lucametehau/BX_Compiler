@@ -23,6 +23,8 @@ void Assembler::assemble(std::ofstream& os) {
         os << name << ":\n";
         assemble_proc(os, start, finish);
     }
+
+    os.close();
 }
 
 void Assembler::assemble_proc(std::ofstream& os, std::size_t start, std::size_t finish) {
@@ -77,8 +79,6 @@ void Assembler::assemble_proc(std::ofstream& os, std::size_t start, std::size_t 
     for (auto i = start + 1; i <= finish; i++) {
         assemble_instr(os, instr[i]);
     }
-
-    os.close();
 }
 
 void Assembler::assemble_instr(std::ofstream& os, TAC& tac) {
