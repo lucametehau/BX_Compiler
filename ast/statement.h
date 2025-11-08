@@ -4,15 +4,15 @@
 namespace Grammar::Statements {
 
 struct VarDecl {
-    static std::unique_ptr<AST::Statement> match(Parser::Parser& parser);
+    static std::unique_ptr<AST::Statement> match(parser::Parser& parser);
 };
 
 struct Assign {
-    static std::unique_ptr<AST::Statement> match(Parser::Parser& parser);
+    static std::unique_ptr<AST::Statement> match(parser::Parser& parser);
 };
 
 struct Statement {
-    static std::unique_ptr<AST::Statement> match(Parser::Parser& parser);
+    static std::unique_ptr<AST::Statement> match(parser::Parser& parser);
 };
 
 };

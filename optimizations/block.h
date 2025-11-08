@@ -5,7 +5,7 @@
 #include "../mm/mm.h"
 #include "../utils/utils.h"
 
-namespace Opt {
+namespace opt {
 
 using Set = utils::GeneralSet<std::string>;
 using Label = std::string;

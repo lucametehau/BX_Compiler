@@ -6,8 +6,8 @@
 namespace Grammar::Statements {
 
 // { STATEMENT* }
-std::unique_ptr<AST::Block> Block::match(Parser::Parser& parser) {
-    if (!parser.expect(Lexer::LBRACE))
+std::unique_ptr<AST::Block> Block::match(parser::Parser& parser) {
+    if (!parser.expect(lexer::LBRACE))
         return nullptr;
     parser.next();
 
@@ -20,7 +20,7 @@ std::unique_ptr<AST::Block> Block::match(Parser::Parser& parser) {
         statements.push_back(std::move(stmt));
     }
 
-    if (!parser.expect(Lexer::RBRACE))
+    if (!parser.expect(lexer::RBRACE))
         return nullptr;
     parser.next();
 

@@ -5,18 +5,18 @@
 #include <cassert>
 #include <memory>
 
-namespace Parser {
+namespace parser {
 
 class Parser {
 private:
-    std::vector<Lexer::Token> tokens;
+    std::vector<lexer::Token> tokens;
     std::size_t pos;
 public:
     Parser() = default;
-    Parser(std::vector<Lexer::Token>& tokens) : tokens(std::move(tokens)), pos(0) {}
+    Parser(std::vector<lexer::Token>& tokens) : tokens(std::move(tokens)), pos(0) {}
 
 public:
-    [[nodiscard]] Lexer::Token peek(std::size_t off = 0) const {
+    [[nodiscard]] lexer::Token peek(std::size_t off = 0) const {
         assert(pos + off < tokens.size());
         return tokens[pos + off];
     }
@@ -26,7 +26,7 @@ public:
         return pos + off;
     }
 
-    [[nodiscard]] bool expect(Lexer::Type T) const {
+    [[nodiscard]] bool expect(lexer::Type T) const {
         return pos < tokens.size() && peek().is_type(T);
     }
 
@@ -43,4 +43,4 @@ public:
     }
 };
 
-}; // namespace Parser
+}; // namespace parser

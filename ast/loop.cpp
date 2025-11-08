@@ -4,12 +4,12 @@
 namespace Grammar::Statements {
 
 // while (EXPR) BLOCK
-std::unique_ptr<AST::Statement> While::match(Parser::Parser& parser) {
-    if (!parser.expect(Lexer::WHILE))
+std::unique_ptr<AST::Statement> While::match(parser::Parser& parser) {
+    if (!parser.expect(lexer::WHILE))
         return nullptr;
     parser.next();
 
-    if (!parser.expect(Lexer::LPAREN))
+    if (!parser.expect(lexer::LPAREN))
         return nullptr;
     parser.next();
     
@@ -17,7 +17,7 @@ std::unique_ptr<AST::Statement> While::match(Parser::Parser& parser) {
     if (!expr)
         return nullptr;
 
-    if (!parser.expect(Lexer::RPAREN))
+    if (!parser.expect(lexer::RPAREN))
         return nullptr;
     parser.next();
     
@@ -29,14 +29,14 @@ std::unique_ptr<AST::Statement> While::match(Parser::Parser& parser) {
 }
 
 // break | continue
-std::unique_ptr<AST::Statement> Jump::match(Parser::Parser& parser) {
+std::unique_ptr<AST::Statement> Jump::match(parser::Parser& parser) {
     auto token = parser.peek();
 
-    if (!token.is_type(Lexer::BREAK) && !token.is_type(Lexer::CONTINUE))
+    if (!token.is_type(lexer::BREAK) && !token.is_type(lexer::CONTINUE))
         return nullptr;
     parser.next();
 
-    if (!parser.expect(Lexer::SEMICOLON))
+    if (!parser.expect(lexer::SEMICOLON))
         return nullptr;
     parser.next();
     

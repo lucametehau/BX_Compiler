@@ -4,7 +4,7 @@
 namespace Grammar::Statements {
 
 struct Block {
-    static std::unique_ptr<AST::Block> match(Parser::Parser& parser);
+    static std::unique_ptr<AST::Block> match(parser::Parser& parser);
 };
 
 };

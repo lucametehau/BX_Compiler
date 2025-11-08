@@ -1,7 +1,7 @@
 #include "cfg.h"
 #include "../asm/asm.h"
 
-namespace Opt {
+namespace opt {
 
 [[nodiscard]] std::vector<Block> CFG::make_blocks(std::vector<TAC>& instr) {
     std::vector<Block> blocks;
@@ -50,7 +50,7 @@ namespace Opt {
             auto op = t.get_opcode();
 
             // normal operations between temporaries only
-            if (op != "label" && op != "jmp" && ASM::jumps.find(op) == ASM::jumps.end() && t.has_result()) {
+            if (op != "label" && op != "jmp" && assembly::jumps.find(op) == assembly::jumps.end() && t.has_result()) {
                 if (op == "copy") {
                     auto arg = t.get_arg();
                     if (original_temp.find(arg) == original_temp.end())
@@ -264,7 +264,7 @@ void CFG::jt_cond_to_uncond() {
             for (auto [child_node, tac] : graph[label]) {
                 // only conditional jumps
                 auto jump = tac->get_opcode();
-                if (ASM::jumps.find(jump) == ASM::jumps.end())
+                if (assembly::jumps.find(jump) == assembly::jumps.end())
                     continue;
                 
                 auto &child_block = get_block(child_node);

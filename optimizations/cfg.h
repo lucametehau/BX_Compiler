@@ -7,7 +7,7 @@
 #include <cassert>
 #include <memory>
 
-namespace Opt {
+namespace opt {
 
 enum class OptimizationType {
     DEAD_COPY_REMOVAL,
@@ -98,7 +98,7 @@ inline void optimize(MM::MM& muncher, std::vector<TAC> &instr, std::string file_
 
     // std::ofstream asm_file(file_prefix + "_" + suffix + ".s");
     std::ofstream asm_file(file_prefix + ".s");
-    ASM::Assembler assembler(muncher, instr);
+    assembly::Assembler assembler(muncher, instr);
     assembler.assemble(asm_file);
 }
 

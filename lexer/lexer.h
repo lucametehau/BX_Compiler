@@ -4,7 +4,7 @@
 #include <string>
 #include <cassert>
 
-namespace Lexer {
+namespace lexer {
 
 class Lexer {
 private:
@@ -31,4 +31,4 @@ public:
     [[nodiscard]] std::vector<Token> tokenize();
 };
 
-}; // namespace Lexer
+}; // namespace lexer

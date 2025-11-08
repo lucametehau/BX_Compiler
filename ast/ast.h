@@ -104,10 +104,10 @@ struct BoolExpression : Expression {
 };
 
 struct UniOpExpression : Expression {
-    Lexer::Token token;
+    lexer::Token token;
     std::unique_ptr<Expression> expr;
 
-    UniOpExpression(Lexer::Token token, std::unique_ptr<Expression> _expr) : token(token), expr(std::move(_expr)) {
+    UniOpExpression(lexer::Token token, std::unique_ptr<Expression> _expr) : token(token), expr(std::move(_expr)) {
         type = expr->get_type();
     }
 
@@ -124,10 +124,10 @@ struct UniOpExpression : Expression {
 };
 
 struct BinOpExpression : Expression {
-    Lexer::Token token;
+    lexer::Token token;
     std::unique_ptr<Expression> left, right;
 
-    BinOpExpression(Lexer::Token token, std::unique_ptr<Expression> _left, std::unique_ptr<Expression> _right) 
+    BinOpExpression(lexer::Token token, std::unique_ptr<Expression> _left, std::unique_ptr<Expression> _right) 
         : token(token), left(std::move(_left)), right(std::move(_right)) {
         type = left->get_type();
     }
@@ -183,9 +183,9 @@ struct Statement : AST {
 
 struct Param {
     std::string name;
-    Lexer::Token type;
+    lexer::Token type;
 
-    Param(std::string name, Lexer::Token type) : name(name), type(type) {}
+    Param(std::string name, lexer::Token type) : name(name), type(type) {}
 
     void print(std::ostream& os, int spaces = 0) {
         os << std::string(2 * spaces, ' ') << "[Param] " << name << " : " << type.get_text() << "\n";
@@ -196,7 +196,7 @@ struct VarDecl : Statement {
     std::vector<std::pair<std::string, std::unique_ptr<Expression>>> var_inits;
     MM::Type type;
 
-    VarDecl(std::vector<std::pair<std::string, std::unique_ptr<Expression>>> var_inits, Lexer::Token _type) : var_inits(std::move(var_inits)) {
+    VarDecl(std::vector<std::pair<std::string, std::unique_ptr<Expression>>> var_inits, lexer::Token _type) : var_inits(std::move(var_inits)) {
         type = MM::lexer_to_mm_type[_type.get_type()];
     }
 
@@ -248,13 +248,13 @@ struct Call : Statement {
 };
 
 struct Jump : Statement {
-    Lexer::Token token;
+    lexer::Token token;
 
-    Jump(Lexer::Token token) : token(token) {}
+    Jump(lexer::Token token) : token(token) {}
 
     void print(std::ostream& os, int spaces = 0) override {
         os << std::string(2 * spaces, ' ');
-        os << (token.is_type(Lexer::CONTINUE) ? "[Continue]" : "[Break]");
+        os << (token.is_type(lexer::CONTINUE) ? "[Continue]" : "[Break]");
         os << "\n";
     }
 
@@ -374,7 +374,7 @@ struct GlobalVarDecl : Declaration {
     std::vector<std::pair<std::string, std::unique_ptr<Expression>>> var_inits;
     MM::Type type;
 
-    GlobalVarDecl(std::vector<std::pair<std::string, std::unique_ptr<Expression>>> var_inits, Lexer::Token _type) : var_inits(std::move(var_inits)) {
+    GlobalVarDecl(std::vector<std::pair<std::string, std::unique_ptr<Expression>>> var_inits, lexer::Token _type) : var_inits(std::move(var_inits)) {
         type = MM::lexer_to_mm_type[_type.get_type()];
     }
 
@@ -405,16 +405,16 @@ struct GlobalVarDecl : Declaration {
 
 struct ProcDecl : Declaration {
     std::string name;
-    Lexer::Token return_type;
+    lexer::Token return_type;
     std::vector<Param> params;
     std::unique_ptr<Block> block;
 
-    ProcDecl(std::string name, Lexer::Token return_type, std::vector<Param> params, std::unique_ptr<Block> block) 
+    ProcDecl(std::string name, lexer::Token return_type, std::vector<Param> params, std::unique_ptr<Block> block) 
         : name(name), return_type(return_type), params(std::move(params)), block(std::move(block)) {}
 
     void print(std::ostream& os, int spaces = 0) override {
         os << std::string(2 * spaces, ' ') << "[Procedure] " << name;
-        if (return_type.is_type(Lexer::INT) || return_type.is_type(Lexer::BOOL))
+        if (return_type.is_type(lexer::INT) || return_type.is_type(lexer::BOOL))
             os << " -> " << return_type.get_text();
         os << "\n";
         for (auto &param : params) {
@@ -433,7 +433,7 @@ struct ProcDecl : Declaration {
             ));
         }
 
-        if (name == "main" && return_type.get_type() != Lexer::VOID) {
+        if (name == "main" && return_type.get_type() != lexer::VOID) {
             throw std::runtime_error(std::format(
                 "Function main expected 'void' type!"
             ));

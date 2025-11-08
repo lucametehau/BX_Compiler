@@ -1,7 +1,7 @@
 #include "lexer.h"
 #include <iostream>
 
-namespace Lexer {
+namespace lexer {
 
 void Lexer::skip_ws() {
     while (pos < src.size() && whitespaces.find(src[pos]) != std::string::npos) {
@@ -72,4 +72,4 @@ void Lexer::skip_ws() {
     return tokens;
 }
 
-}; // namespace Lexer
+}; // namespace lexer

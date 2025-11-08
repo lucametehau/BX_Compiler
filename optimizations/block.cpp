@@ -1,7 +1,7 @@
 #include "block.h"
 #include "../asm/asm.h"
 
-namespace Opt {
+namespace opt {
 
 Block::Block(std::vector<std::shared_ptr<TAC>>& instr, bool start) : instr(instr), start(start) {
     assert(instr[start]->get_opcode() == "label");
@@ -11,7 +11,7 @@ Block::Block(std::vector<std::shared_ptr<TAC>>& instr, bool start) : instr(instr
     // connections of current block
     for (auto &t : instr) {
         auto op = t->get_opcode();
-        if (ASM::jumps.find(op) != ASM::jumps.end() || op == "jmp")
+        if (assembly::jumps.find(op) != assembly::jumps.end() || op == "jmp")
             jumps.push_back(t);
     }
 }

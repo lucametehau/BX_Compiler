@@ -1,7 +1,7 @@
 #include "asm.h"
 #include <iomanip>
 
-namespace ASM {
+namespace assembly {
 
 Assembler::Assembler(MM::MM& muncher, std::vector<TAC>& _instr) : muncher(muncher), args_on_stack(0), instr(_instr) {}
 
@@ -162,4 +162,4 @@ void Assembler::assemble_instr(std::ofstream& os, TAC& tac) {
     }
 }
 
-}; // namespace ASM
+}; // namespace assembly

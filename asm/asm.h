@@ -6,7 +6,7 @@
 #include <map>
 #include <functional>
 
-namespace ASM {
+namespace assembly {
 
 inline const std::array<std::string, 6> arg_registers = {
     "%rdi", "%rsi", "%rdx", "%rcx", "%r8", "%r9"

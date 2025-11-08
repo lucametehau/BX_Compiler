@@ -5,12 +5,12 @@
 namespace Grammar::Statements {
 
 // if (EXPR) BLOCK IFREST
-std::unique_ptr<AST::Statement> IfElse::match(Parser::Parser& parser) {
-    if (!parser.expect(Lexer::IF))
+std::unique_ptr<AST::Statement> IfElse::match(parser::Parser& parser) {
+    if (!parser.expect(lexer::IF))
         return nullptr;
     parser.next();
 
-    if (!parser.expect(Lexer::LPAREN))
+    if (!parser.expect(lexer::LPAREN))
         return nullptr;
     parser.next();
 
@@ -19,7 +19,7 @@ std::unique_ptr<AST::Statement> IfElse::match(Parser::Parser& parser) {
         return nullptr;
 
     
-    if (!parser.expect(Lexer::RPAREN))
+    if (!parser.expect(lexer::RPAREN))
         return nullptr;
     parser.next();
 
@@ -34,8 +34,8 @@ std::unique_ptr<AST::Statement> IfElse::match(Parser::Parser& parser) {
 }
 
 // else IFELSE | BLOCK
-std::optional<std::unique_ptr<AST::Statement>> IfRest::match(Parser::Parser& parser) {
-    if (!parser.expect(Lexer::ELSE))
+std::optional<std::unique_ptr<AST::Statement>> IfRest::match(parser::Parser& parser) {
+    if (!parser.expect(lexer::ELSE))
         return std::nullopt;
     parser.next();
 

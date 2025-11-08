@@ -29,10 +29,10 @@ int main(int argc, char** argv) {
     };
     
 
-    Lexer::Lexer lexer(get_file_content(in));
+    lexer::Lexer lexer(get_file_content(in));
     auto tokens = lexer.tokenize();
 
-    Parser::Parser parser(tokens);
+    parser::Parser parser(tokens);
     std::cout << "Parsing and building AST...\n";
     auto ast = Grammar::Declarations::Program::match(parser);
 
@@ -64,16 +64,19 @@ int main(int argc, char** argv) {
     // assembling
     std::cout << "Assembling...\n";
     std::ofstream asm_file(file_prefix + ".s");
-    ASM::Assembler assembler(muncher, instr);
+    assembly::Assembler assembler(muncher, instr);
     assembler.assemble(asm_file);
 
     std::cout << "Applying optimizations...\n";
 
     for (int i = 1; i <= 1; i++) {
-        Opt::optimize<Opt::OptimizationType::DEAD_COPY_REMOVAL>(muncher, instr, file_prefix);
-        Opt::optimize<Opt::OptimizationType::JT_SEQ_UNCOND>(muncher, instr, file_prefix);
-        Opt::optimize<Opt::OptimizationType::JT_COND_TO_UNCOND>(muncher, instr, file_prefix);
-        Opt::optimize<Opt::OptimizationType::COALESCE>(muncher, instr, file_prefix);
+        std::cout << std::format("Before round #{} of optimizations, we have {} operations.\n", i, instr.size());
+
+        opt::optimize<opt::OptimizationType::DEAD_COPY_REMOVAL>(muncher, instr, file_prefix);
+        opt::optimize<opt::OptimizationType::JT_SEQ_UNCOND>(muncher, instr, file_prefix);
+        opt::optimize<opt::OptimizationType::JT_COND_TO_UNCOND>(muncher, instr, file_prefix);
+        opt::optimize<opt::OptimizationType::COALESCE>(muncher, instr, file_prefix);
+        std::cout << std::format("After round #{} of optimizations, we have {} operations.\n", i, instr.size());
     }
     return 0;
 }

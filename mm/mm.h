@@ -21,8 +21,8 @@ inline std::map<Type, std::string> type_text = {
     {Type::INT, "int"}, {Type::BOOL, "bool"}, {Type::VOID, "void"}
 };
 
-inline std::map<Lexer::Type, Type> lexer_to_mm_type = {
-    {Lexer::INT, Type::INT}, {Lexer::BOOL, Type::BOOL}, {Lexer::VOID, Type::VOID}
+inline std::map<lexer::Type, Type> lexer_to_mm_type = {
+    {lexer::INT, Type::INT}, {lexer::BOOL, Type::BOOL}, {lexer::VOID, Type::VOID}
 };
 
 struct Symbol {

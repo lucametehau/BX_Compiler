@@ -56,9 +56,9 @@ void BinOpExpression::type_check(MM::MM& muncher) {
             "Error at row {}, col {}! Binary Operator {} expected expressions of same types!", token.get_row(), token.get_col(), token.get_text()
         ));
     }
-    if (Lexer::bool_binary_operators.find(op) != Lexer::bool_binary_operators.end()) {
+    if (lexer::bool_binary_operators.find(op) != lexer::bool_binary_operators.end()) {
         type = MM::Type::BOOL;
-        if (op == Lexer::ANDAND || op == Lexer::OROR) {
+        if (op == lexer::ANDAND || op == lexer::OROR) {
             if (left->get_type() != MM::Type::BOOL) {
                 throw std::runtime_error(std::format(
                     "Error at row {}, col {}! Expected type 'bool' terms for binary operator {}, got type {}!", token.get_row(), token.get_col(), token.get_text(), MM::type_text[left->get_type()]

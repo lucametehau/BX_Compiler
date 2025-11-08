@@ -5,7 +5,7 @@
 #include <cassert>
 #include <set>
 
-namespace Lexer {
+namespace lexer {
 
 enum Type {
     IDENT, NUMBER, 
@@ -124,4 +124,4 @@ public:
     }
 };
 
-}; // namespace Lexer
+}; // namespace lexer

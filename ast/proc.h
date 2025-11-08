@@ -4,11 +4,11 @@
 namespace Grammar::Statements {
 
 struct Return {
-    static std::unique_ptr<AST::Statement> match(Parser::Parser& parser);
+    static std::unique_ptr<AST::Statement> match(parser::Parser& parser);
 };
 
 struct Call {
-    static std::unique_ptr<AST::Statement> match(Parser::Parser& parser);
+    static std::unique_ptr<AST::Statement> match(parser::Parser& parser);
 };
 
 };

@@ -57,7 +57,7 @@ Expressions
     std::vector<TAC> expr_munch = expr->munch(muncher);
 
     expr_munch.push_back(TAC(
-        Lexer::op_code.find(op)->second,
+        lexer::op_code.find(op)->second,
         { expr_munch.back().get_result() },
         muncher.new_temp()
     ));
@@ -79,7 +79,7 @@ Expressions
     utils::concat(left_munch, right_munch);
     
     left_munch.push_back(TAC(
-        Lexer::op_code.find(op)->second,
+        lexer::op_code.find(op)->second,
         { tl, tr },
         muncher.new_temp()
     ));
@@ -93,10 +93,10 @@ Expressions
     std::vector<TAC> left_munch, right_munch;
 
     // short circuiting operators
-    if (op == Lexer::ANDAND || op == Lexer::OROR)
+    if (op == lexer::ANDAND || op == lexer::OROR)
     {
         auto label = muncher.new_label();
-        left_munch = op == Lexer::ANDAND ? left->munch_bool(muncher, label, label_false)
+        left_munch = op == lexer::ANDAND ? left->munch_bool(muncher, label, label_false)
                                          : left->munch_bool(muncher, label_true, label);
         right_munch = right->munch_bool(muncher, label_true, label_false);
         
@@ -124,7 +124,7 @@ Expressions
     ));
 
     left_munch.push_back(TAC(
-        Lexer::jump_code.find(op)->second,
+        lexer::jump_code.find(op)->second,
         { res_temp },
         label_true
     ));
@@ -426,7 +426,7 @@ Statements
     return {TAC(
         "jmp",
         {},
-        token.is_type(Lexer::BREAK) ? muncher.get_break_point() : muncher.get_continue_point()
+        token.is_type(lexer::BREAK) ? muncher.get_break_point() : muncher.get_continue_point()
     )};
 }
 

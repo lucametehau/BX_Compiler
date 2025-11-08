@@ -5,7 +5,7 @@
 
 namespace Grammar::Expressions {
 
-std::unique_ptr<AST::Expression> Expression::match(Parser::Parser& parser, int min_precedence) {
+std::unique_ptr<AST::Expression> Expression::match(parser::Parser& parser, int min_precedence) {
     auto left = match_term(parser);
 #ifdef DEBUG
     std::cout << parser.peek_pos() << ", " << parser.peek().get_text() << " in expression matching\n";
@@ -17,7 +17,7 @@ std::unique_ptr<AST::Expression> Expression::match(Parser::Parser& parser, int m
         if (precedence < min_precedence) break;
 
         parser.next();
-        int next_precedence = token.associativity() == Lexer::Associativity::LEFT ? precedence + 1 : precedence;
+        int next_precedence = token.associativity() == lexer::Associativity::LEFT ? precedence + 1 : precedence;
         auto right = Expression::match(parser, next_precedence);
 
 #ifdef DEBUG
@@ -32,27 +32,27 @@ std::unique_ptr<AST::Expression> Expression::match(Parser::Parser& parser, int m
     return left;
 }
 
-std::unique_ptr<AST::Expression> Expression::match_term(Parser::Parser& parser) {
+std::unique_ptr<AST::Expression> Expression::match_term(parser::Parser& parser) {
 #ifdef DEBUG
     std::cout << parser.peek_pos() << ", " << parser.peek().get_text() << " in expression term matching\n";
 #endif
 
     const auto token = parser.peek();
-    if (token.is_type(Lexer::LPAREN)) {
+    if (token.is_type(lexer::LPAREN)) {
         parser.next();
         auto expr = Expression::match(parser);
-        if (!parser.expect(Lexer::RPAREN))
+        if (!parser.expect(lexer::RPAREN))
             throw std::runtime_error("expected ')'");
         parser.next();
         return expr;
     }
 
-    if (token.is_type(Lexer::NUMBER)) {
+    if (token.is_type(lexer::NUMBER)) {
         parser.next();
         return std::make_unique<AST::NumberExpression>(std::stoll(token.get_text()));
     }
     
-    if (token.is_type(Lexer::IDENT)) {
+    if (token.is_type(lexer::IDENT)) {
         if (auto eval = Eval::match(parser))
             return eval;
         
@@ -60,18 +60,18 @@ std::unique_ptr<AST::Expression> Expression::match_term(Parser::Parser& parser) 
         return std::make_unique<AST::IdentExpression>(token.get_text());
     }
     
-    if (token.is_type(Lexer::TRUE) || token.is_type(Lexer::FALSE)) {
+    if (token.is_type(lexer::TRUE) || token.is_type(lexer::FALSE)) {
         parser.next();
         return std::make_unique<AST::BoolExpression>(token.get_text());
     }
 
-    if (token.is_type(Lexer::NOT)) {
+    if (token.is_type(lexer::NOT)) {
         parser.next();
         auto expr = Expression::match(parser, 70);
         return std::make_unique<AST::UniOpExpression>(token, std::move(expr));
     }
 
-    if (token.is_type(Lexer::DASH) || token.is_type(Lexer::TILD)) {
+    if (token.is_type(lexer::DASH) || token.is_type(lexer::TILD)) {
         parser.next();
         auto expr = Expression::match(parser, 80);
         return std::make_unique<AST::UniOpExpression>(token, std::move(expr));
@@ -81,30 +81,30 @@ std::unique_ptr<AST::Expression> Expression::match_term(Parser::Parser& parser) 
 }
 
 // IDENT(EXPR*)
-std::unique_ptr<AST::Expression> Eval::match(Parser::Parser& parser) {
+std::unique_ptr<AST::Expression> Eval::match(parser::Parser& parser) {
     auto name = parser.peek();
-    if (!name.is_type(Lexer::IDENT))
+    if (!name.is_type(lexer::IDENT))
         return nullptr;
     parser.next();
 
-    if (!parser.expect(Lexer::LPAREN))
+    if (!parser.expect(lexer::LPAREN))
         return nullptr;
     parser.next();
     
     std::vector<std::unique_ptr<AST::Expression>> params;
-    while (!parser.expect(Lexer::RPAREN)) {
+    while (!parser.expect(lexer::RPAREN)) {
         auto expr = Expressions::Expression::match(parser);
         if (!expr)
             return nullptr;
 
         params.push_back(std::move(expr));
         
-        if (!parser.expect(Lexer::COMMA))
+        if (!parser.expect(lexer::COMMA))
             break;
         parser.next();
     }
     
-    if (!parser.expect(Lexer::RPAREN))
+    if (!parser.expect(lexer::RPAREN))
         return nullptr;
     parser.next();
 

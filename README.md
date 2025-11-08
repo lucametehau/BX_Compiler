@@ -30,5 +30,5 @@ There aren't many features available, some are WIP:
 - Functions/Procedures
 - If-Else blocks
 - While, Break, Continue
-- Translates directly to ASM
+- Translates directly to asm
 - Supports comments (`// or /* or #`?)

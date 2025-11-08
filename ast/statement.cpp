@@ -7,7 +7,7 @@
 namespace Grammar::Statements {
 
 // VARDECL | ASSIGN | CALL | IFELSE | WHILE | JUMP | BLOCK | RETURN
-std::unique_ptr<AST::Statement> Statement::match(Parser::Parser& parser) {
+std::unique_ptr<AST::Statement> Statement::match(parser::Parser& parser) {
     auto start_pos = parser.peek_pos();
     if (auto stmt = VarDecl::match(parser))
         return stmt;
@@ -45,19 +45,19 @@ std::unique_ptr<AST::Statement> Statement::match(Parser::Parser& parser) {
 }
 
 // var (IDENT = EXPR,)* : TYPE;
-std::unique_ptr<AST::Statement> VarDecl::match(Parser::Parser& parser) {
-    if (!parser.expect(Lexer::VAR))
+std::unique_ptr<AST::Statement> VarDecl::match(parser::Parser& parser) {
+    if (!parser.expect(lexer::VAR))
         return nullptr;
     parser.next();
 
     std::vector<std::pair<std::string, std::unique_ptr<AST::Expression>>> var_inits;
     while (true) {
         auto name = parser.peek();
-        if (!name.is_type(Lexer::IDENT))
+        if (!name.is_type(lexer::IDENT))
             return nullptr;
         parser.next();
 
-        if (!parser.expect(Lexer::EQ))
+        if (!parser.expect(lexer::EQ))
             return nullptr;
         parser.next();
 
@@ -67,21 +67,21 @@ std::unique_ptr<AST::Statement> VarDecl::match(Parser::Parser& parser) {
         
         var_inits.push_back(std::make_pair(name.get_text(), std::move(expr)));
         
-        if (!parser.expect(Lexer::COMMA))
+        if (!parser.expect(lexer::COMMA))
             break;
         parser.next();
     }
 
-    if (!parser.expect(Lexer::COLON))
+    if (!parser.expect(lexer::COLON))
         return nullptr;
     parser.next();
 
     auto type = parser.peek();
-    if (!type.is_type(Lexer::INT) && !type.is_type(Lexer::BOOL))
+    if (!type.is_type(lexer::INT) && !type.is_type(lexer::BOOL))
         return nullptr;
     parser.next();
 
-    if (!parser.expect(Lexer::SEMICOLON))
+    if (!parser.expect(lexer::SEMICOLON))
         return nullptr;
     parser.next();
 
@@ -89,13 +89,13 @@ std::unique_ptr<AST::Statement> VarDecl::match(Parser::Parser& parser) {
 }
 
 // IDENT = EXPR;
-std::unique_ptr<AST::Statement> Assign::match(Parser::Parser& parser) {
+std::unique_ptr<AST::Statement> Assign::match(parser::Parser& parser) {
     auto name = parser.peek();
-    if (!name.is_type(Lexer::IDENT))
+    if (!name.is_type(lexer::IDENT))
         return nullptr;
     parser.next();
 
-    if (!parser.expect(Lexer::EQ))
+    if (!parser.expect(lexer::EQ))
         return nullptr;
     parser.next();
 
@@ -103,7 +103,7 @@ std::unique_ptr<AST::Statement> Assign::match(Parser::Parser& parser) {
     if (!expr)
         return nullptr;
     
-    if (!parser.expect(Lexer::SEMICOLON))
+    if (!parser.expect(lexer::SEMICOLON))
         return nullptr;
     parser.next();
 
