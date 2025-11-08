@@ -376,6 +376,10 @@ void CFG::copy_propagation() {
             }
         }
 
+        std::cout << "Forward copy removal\n";
+        for (auto &tac : instr)
+            std::cout << *tac << "\n";
+
         for (int i = (int)instr.size() - 1; i >= 0; i--) {
             auto tac = instr[i];
             if (tac->get_opcode() != "copy")
@@ -426,6 +430,10 @@ void CFG::copy_propagation() {
 
             instr.erase(instr.begin() + i);
         }
+
+        std::cout << "Backward copy removal\n";
+        for (auto &tac : instr)
+            std::cout << *tac << "\n";
     }
 }
 

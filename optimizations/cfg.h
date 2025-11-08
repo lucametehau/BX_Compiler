@@ -93,11 +93,11 @@ inline void optimize(MM::MM& muncher, std::vector<TAC> &instr, std::string file_
     instr = cfg.make_tac();
 
     muncher.process(instr);
-    // muncher.jsonify(file_prefix + "." + suffix + ".tac.json", instr);
-    muncher.jsonify(file_prefix + ".tac.json", instr);
+    muncher.jsonify(file_prefix + "." + suffix + ".tac.json", instr);
+    // muncher.jsonify(file_prefix + ".tac.json", instr);
 
-    // std::ofstream asm_file(file_prefix + "_" + suffix + ".s");
-    std::ofstream asm_file(file_prefix + ".s");
+    std::ofstream asm_file(file_prefix + "_" + suffix + ".s");
+    // std::ofstream asm_file(file_prefix + ".s");
     assembly::Assembler assembler(muncher, instr);
     assembler.assemble(asm_file);
 }
