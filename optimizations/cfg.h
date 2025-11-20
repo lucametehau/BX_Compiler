@@ -44,6 +44,21 @@ public:
         assert(false);
     }
 
+    [[nodiscard]] std::vector<Label> get_predecessors(std::string label) {
+        std::vector<Label> pred;
+        for (auto &block : blocks) {
+            auto pred_label = block.get_label();
+            for (auto &[son, _] : graph[pred_label]) {
+                if (son == label) {
+                    pred.push_back(pred_label);
+                    break;
+                }
+            }
+        }
+
+        return pred;
+    }
+
     // unreachable code elimination
     void uce();
 
@@ -61,6 +76,9 @@ public:
 
     // Deletes dead copies (the result isn't used anywhere)
     void eliminate_dead_copies();
+
+    // Generate crude SSA code
+    void ssa_crude();
 };
 
 
@@ -93,11 +111,11 @@ inline void optimize(MM::MM& muncher, std::vector<TAC> &instr, std::string file_
     instr = cfg.make_tac();
 
     muncher.process(instr);
-    muncher.jsonify(file_prefix + "." + suffix + ".tac.json", instr);
-    // muncher.jsonify(file_prefix + ".tac.json", instr);
+    // muncher.jsonify(file_prefix + "." + suffix + ".tac.json", instr);
+    muncher.jsonify(file_prefix + ".tac.json", instr);
 
-    std::ofstream asm_file(file_prefix + "_" + suffix + ".s");
-    // std::ofstream asm_file(file_prefix + ".s");
+    // std::ofstream asm_file(file_prefix + "_" + suffix + ".s");
+    std::ofstream asm_file(file_prefix + ".s");
     assembly::Assembler assembler(muncher, instr);
     assembler.assemble(asm_file);
 }

@@ -23,16 +23,24 @@ public:
     Block() = default;
     Block(std::vector<std::shared_ptr<TAC>>& instr, bool start);
 
-    [[nodiscard]] std::vector<std::shared_ptr<TAC>> get_jumps() {
-        return jumps;
+    void set_instr(std::vector<std::shared_ptr<TAC>>& _instr) {
+        instr = _instr;
+    } 
+
+    [[nodiscard]] std::vector<std::shared_ptr<TAC>>& get_instr() {
+        return instr;
     }
 
     [[nodiscard]] Label get_label() {
         return label;
     }
 
-    [[nodiscard]] std::vector<std::shared_ptr<TAC>>& get_instr() {
-        return instr;
+    [[nodiscard]] std::vector<std::shared_ptr<TAC>> get_jumps() {
+        return jumps;
+    }
+
+    [[nodiscard]] Set get_live_out(size_t ind) {
+        return live_out[ind];
     }
 
     [[nodiscard]] bool is_starting() const {
@@ -42,10 +50,6 @@ public:
     void build_liveness(Set &live_in_block, Set &live_out_block);
 
     void build_def_use(Set &def_block, Set &use_block);
-
-    void remove_instr(std::size_t ind);
-
-    void eliminate_dead_copies();
 };
 
 };
