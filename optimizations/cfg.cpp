@@ -1,5 +1,6 @@
 #include "cfg.h"
 #include "../asm/asm.h"
+#include <algorithm>
 
 namespace opt {
 
@@ -344,103 +345,235 @@ void CFG::build_liveness() {
     }
 }
 
-void CFG::copy_propagation() {
+void CFG::ssa_crude() {
+    // build liveness
+    std::map<Label, Set> live_in_block, live_out_block;
+    std::map<Label, Set> def_block, use_block;
+
+    // build def and use sets
+    for (auto &block : blocks) {
+        block.build_def_use(def_block[block.get_label()], use_block[block.get_label()]);
+    }
+
+    // liveness of each block
+    {
+        bool changed = true;
+        while (changed) {
+            changed = false;
+            for (auto it = blocks.rbegin(); it != blocks.rend(); it++) {
+                auto &block = *it;
+                auto label = block.get_label();
+                auto temp_in = live_in_block[label];
+                auto temp_out = live_out_block[label];
+
+                live_out_block[label] = Set();
+                for (auto &[succ_label, _] : graph[label]) {
+                    live_out_block[label] = live_out_block[label].join(live_in_block[succ_label]);
+                }
+
+                live_in_block[label] = use_block[label].join(live_out_block[label].minus(def_block[label]));
+                if (live_in_block[label] != temp_in || live_out_block[label] != temp_out)
+                    changed = true;
+            }
+        }
+    }
+
+    // liveness of each instruction
+    for (auto &block : blocks) {
+        block.build_liveness(live_in_block[block.get_label()], live_out_block[block.get_label()]);
+    }
+    
+    // add phi functions at block entries based on live-in sets
+    for (auto &block : blocks) {
+        auto label = block.get_label();
+        auto preds = get_predecessors(label);
+        auto live_in = live_in_block[label];
+        
+        std::vector<std::shared_ptr<TAC>> new_instr;
+        for (auto &temp : live_in.get_set()) {
+            std::map<Label, std::string> phi_args;
+            for (auto &pred_label : preds) {
+                phi_args[pred_label] = temp;
+            }
+            new_instr.push_back(std::make_shared<TAC>(
+                "phi",
+                phi_args,
+                ""
+            ));
+        }
+        
+        // insert phi instructions at the beginning of the block
+        auto &instr = block.get_instr();
+        instr.insert(instr.begin(), new_instr.begin(), new_instr.end());
+    }
+    
+    // temporary versioning
+    std::map<std::string, int> version_counter;
+    std::map<Label, std::map<std::string, std::string>> version_maps;
+    
+    // version_maps["entry"] = {};
+    
+    for (auto &block : blocks) {
+        auto label = block.get_label();
+        auto &instr = block.get_instr();
+        std::map<std::string, std::string> &ver_map = version_maps[label];
+        
+        for (auto &tac_ptr : instr) {
+            auto &t = *tac_ptr;
+            
+            for (auto &arg : t.get_args()) {
+                if (arg[0] == '%' && ver_map.count(arg)) {
+                    arg = ver_map[arg];
+                }
+            }
+            
+            if (t.get_opcode() == "phi") {
+                auto &phi_args = t.get_phi_args();
+                for (auto &[pred_label, temp] : phi_args) {
+                    if (version_maps.count(pred_label) && version_maps[pred_label].count(temp)) {
+                        phi_args[pred_label] = version_maps[pred_label][temp];
+                    }
+                }
+            }
+            
+            if (t.has_result() && t.get_result()[0] == '%') {
+                std::string root = t.get_result();
+                if (version_counter.count(root) == 0) {
+                    version_counter[root] = 0;
+                }
+                std::string new_temp = root + "." + std::to_string(version_counter[root]++);
+                t.set_result(new_temp);
+                ver_map[root] = new_temp;
+            }
+        }
+    }
+    
     for (auto &block : blocks) {
         auto &instr = block.get_instr();
-        for (std::size_t i = 0; i < instr.size(); i++) {
-            auto tac = instr[i];
-            if (tac->get_opcode() != "copy")
-                continue;
-
-            auto from = tac->get_arg();
-            auto to = tac->get_result();
-
-            // we are copying a function parameter
-            // don't modify
-            if (from[1] == 'p')
-                continue;
-
-            for (std::size_t j = i + 1; j < instr.size(); j++) {
-                auto curr_tac = instr[j];
-
-                // instruction changes our temporaries
-                if (curr_tac->has_result() && (curr_tac->get_result() == from || curr_tac->get_result() == to))
-                    break;
-
-                for (auto &arg : curr_tac->get_args()) {
-                    if (arg == to) {
-                        arg = from;
-                        break;
+        for (auto &tac_ptr : instr) {
+            if (tac_ptr->get_opcode() == "phi") {
+                auto &phi_args = tac_ptr->get_phi_args();
+                for (auto &[pred_label, temp] : phi_args) {
+                    if (version_maps.count(pred_label)) {
+                        std::string root = temp;
+                        size_t dot_pos = root.find('.');
+                        if (dot_pos != std::string::npos) {
+                            root = root.substr(0, dot_pos);
+                        }
+                        if (version_maps[pred_label].count(root)) {
+                            phi_args[pred_label] = version_maps[pred_label][root];
+                        }
                     }
                 }
             }
         }
+    }
+}
 
-        std::cout << "Forward copy removal\n";
-        for (auto &tac : instr)
-            std::cout << *tac << "\n";
-
-        for (int i = (int)instr.size() - 1; i >= 0; i--) {
-            auto tac = instr[i];
-            if (tac->get_opcode() != "copy")
-                continue;
-
-            auto from = tac->get_arg();
-            auto to = tac->get_result();
-
-            // we are copying a function parameter
-            // don't modify
-            if (from[1] == 'p')
-                continue;
-
-            int idx = -1;
-            bool can_replace = true;
-            for (int j = i - 1; j >= 0; j--) {
-                auto curr_tac = instr[j];
-
-                // instruction changes our temporaries
-                if (curr_tac->has_result() && curr_tac->get_result() == from) {
-                    idx = j;
-                    curr_tac->set_result(to);
-                    break;
+void CFG::copy_propagation() {
+    bool changed = true;
+    while (changed) {
+        changed = false;
+        
+        // copy map: for each copy instruction %u = copy %v, map u -> v
+        std::map<std::string, std::string> copy_map;
+        for (auto &block : blocks) {
+            auto &instr = block.get_instr();
+            for (auto &tac_ptr : instr) {
+                if (tac_ptr->get_opcode() == "copy" && tac_ptr->has_result() && tac_ptr->get_arg()[1] != 'p') {
+                    std::string from = tac_ptr->get_arg();  // Assuming single arg for copy
+                    std::string to = tac_ptr->get_result();
+                    copy_map[to] = from;
                 }
-
-                if (curr_tac->has_result() && curr_tac->get_result() == to)
-                    break;
-
-                // cant replace if we change 'to'
-                for (auto &arg : curr_tac->get_args()) {
-                    if (arg == to) {
-                        can_replace = false;
-                        break;
+            }
+        }
+        
+        for (auto &block : blocks) {
+            auto &instr = block.get_instr();
+            for (auto &tac_ptr : instr) {
+                if (tac_ptr->get_opcode() == "phi") {
+                    auto &phi_args = tac_ptr->get_phi_args();
+                    for (auto &[label, temp] : phi_args) {
+                        if (copy_map.count(temp)) {
+                            phi_args[label] = copy_map[temp];
+                            changed = true;
+                        }
+                    }
+                } else {
+                    for (auto &arg : tac_ptr->get_args()) {
+                        if (copy_map.count(arg)) {
+                            arg = copy_map[arg];
+                            changed = true;
+                        }
                     }
                 }
-            }
-
-            if (!can_replace || idx == -1)
-                continue;
-
-            // replace all 'from' arguments with 'to'
-            for (int j = idx + 1; j < i; j++) {
-                for (auto &arg : instr[j]->get_args()) {
-                    if (arg == from)
-                        arg = to;
+                
+                if (tac_ptr->has_result() && tac_ptr->get_opcode() != "copy" && copy_map.count(tac_ptr->get_result())) {
+                    tac_ptr->set_result(copy_map[tac_ptr->get_result()]);
+                    changed = true;
                 }
             }
-
-            instr.erase(instr.begin() + i);
         }
-
-        std::cout << "Backward copy removal\n";
-        for (auto &tac : instr)
-            std::cout << *tac << "\n";
+        
+        for (auto &block : blocks) {
+            auto &instr = block.get_instr();
+            instr.erase(std::remove_if(instr.begin(), instr.end(), 
+                [](const std::shared_ptr<TAC>& tac) {
+                    return tac->get_opcode() == "copy" && 
+                           tac->has_result() && 
+                           tac->get_result() == tac->get_arg();
+                }), instr.end());
+        }
     }
 }
 
 void CFG::eliminate_dead_copies() {
-    build_liveness();
-    for (auto &block : blocks) {
-        block.eliminate_dead_copies();
+    bool changed = true;
+    while (changed) {
+        build_liveness();
+        changed = false;
+        for (auto &block : blocks) {
+            auto &instr = block.get_instr();
+            auto label = block.get_label();
+            std::vector<std::shared_ptr<TAC>> new_instr;
+
+            for (std::size_t i = 0; i < instr.size(); i++) {
+                auto tac = instr[i];
+                if (tac->get_opcode() != "copy") {
+                    new_instr.push_back(tac);
+                    continue;
+                }
+
+                bool is_dead = true;
+                auto result = tac->get_result();
+                if (block.get_live_out(i).count(result))
+                    is_dead = false;
+                else {
+                    for (auto &[son, _] : graph[block.get_label()]) {
+                        auto &succ_block = get_block(son);
+                        for (auto &succ_tac : succ_block.get_instr()) {
+                            if (succ_tac->get_opcode() == "phi") {
+                                for (auto &[pred_label, temp] : succ_tac->get_phi_args()) {
+                                    if (pred_label == block.get_label() && temp == result) {
+                                        is_dead = false;
+                                        break;
+                                    }
+                                }
+                            }
+                            if (!is_dead) break;
+                        }
+                        if (!is_dead) break;
+                    }
+                }
+
+                if (!is_dead)
+                    new_instr.push_back(tac);
+                else
+                    changed = true;
+            }
+
+            block.set_instr(new_instr);
+        }
     }
 }
 
