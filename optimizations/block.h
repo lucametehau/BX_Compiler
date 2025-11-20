@@ -50,8 +50,6 @@ public:
     void build_liveness(Set &live_in_block, Set &live_out_block);
 
     void build_def_use(Set &def_block, Set &use_block);
-
-    void remove_instr(std::size_t ind);
 };
 
 };

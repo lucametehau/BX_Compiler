@@ -29,14 +29,6 @@ private:
 
     void build_liveness();
 
-    void compute_dominators();
-
-    void compute_idom();
-
-    void build_dom_tree();
-
-    void compute_df();
-
 public:
     CFG(MM::MM& muncher) : muncher(muncher) {};
 
