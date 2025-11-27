@@ -11,7 +11,7 @@ Expressions
 */
 
 void NumberExpression::type_check([[maybe_unused]] MM::MM& muncher) {
-    type = MM::Type::INT;
+    type = MM::Type::Int();
 }
 
 void IdentExpression::type_check(MM::MM& muncher) {
@@ -19,7 +19,7 @@ void IdentExpression::type_check(MM::MM& muncher) {
 }
 
 void BoolExpression::type_check([[maybe_unused]] MM::MM& muncher) {
-    type = MM::Type::BOOL;
+    type = MM::Type::Bool();
 }
 
 void UniOpExpression::type_check(MM::MM& muncher) {
@@ -28,16 +28,16 @@ void UniOpExpression::type_check(MM::MM& muncher) {
     
     // type checking
     if (op == "!") {
-        type = MM::Type::BOOL;
-        if (expr->get_type() != MM::Type::BOOL) {
+        type = MM::Type::Bool();
+        if (!expr->get_type().is_bool()) {
             throw std::runtime_error(std::format(
                 "Error at row {}, col {}! Unary operator {} expected type 'bool' expression!", token.get_row(), token.get_col(), op
             ));
         }
     }
     else {
-        type = MM::Type::INT;
-        if (expr->get_type() != MM::Type::INT) {
+        type = MM::Type::Int();
+        if (!expr->get_type().is_int()) {
             throw std::runtime_error(std::format(
                 "Error at row {}, col {}! Unary operator {} expected type 'int' expression!", token.get_row(), token.get_col(), op
             ));
@@ -57,27 +57,28 @@ void BinOpExpression::type_check(MM::MM& muncher) {
         ));
     }
     if (lexer::bool_binary_operators.find(op) != lexer::bool_binary_operators.end()) {
-        type = MM::Type::BOOL;
+        type = MM::Type::Bool();
         if (op == lexer::ANDAND || op == lexer::OROR) {
-            if (left->get_type() != MM::Type::BOOL) {
+            if (!left->get_type().is_bool()) {
                 throw std::runtime_error(std::format(
-                    "Error at row {}, col {}! Expected type 'bool' terms for binary operator {}, got type {}!", token.get_row(), token.get_col(), token.get_text(), MM::type_text[left->get_type()]
+                    "Error at row {}, col {}! Expected type 'bool' terms for binary operator {}, got type {}!", token.get_row(), token.get_col(), token.get_text(), left->get_type().to_string()
                 ));
             }
         }
         else {
-            if (left->get_type() != MM::Type::INT) {
+            if (!left->get_type().is_int()) {
                 throw std::runtime_error(std::format(
-                    "Error at row {}, col {}! Expected type 'int' terms for binary operator {}, got type {}!", token.get_row(), token.get_col(), token.get_text(), MM::type_text[left->get_type()]
+                    "Error at row {}, col {}! Expected type 'int' terms for binary operator {}, got type {}!", token.get_row(), token.get_col(), token.get_text(), left->get_type().to_string()
                 ));
             }
         }
     }
     else {
-        type = MM::Type::INT;
-        if (left->get_type() != MM::Type::INT) {
+        type = MM::Type::Int();
+        if (!left->get_type().is_int()) {
             throw std::runtime_error(std::format(
-                "Error at row {}, col {}! Expected type 'int' terms for binary operator {}, got type {}!", token.get_row(), token.get_col(), token.get_text(), MM::type_text[left->get_type()]
+                "Error at row {}, col {}! Expected type 'int' terms for binary operator {}, got type {}!", 
+                token.get_row(), token.get_col(), token.get_text(), left->get_type().to_string()
             ));
         }
     }
@@ -93,30 +94,30 @@ void Eval::type_check(MM::MM& muncher) {
 
     // print is a special function
     if (name != "print")
-        type = muncher.get_type(name);
+        type = muncher.get_type(name).get_return_type();
     else {
-        type = MM::Type::VOID;
+        type = MM::Type::Void();
     }
 
     for (auto &expr : params) {
         expr->type_check(muncher);
 
 #ifdef DEBUG
-        std::cout << name << " " << param_count << " " << MM::type_text[expr->get_type()] << "\n";
+        std::cout << name << " " << param_count << " " << expr->get_type().to_string() << "\n";
 #endif
 
         if (name != "print") {
-            auto arg_type = muncher.get_function_arg_type(name, param_count);
+            auto arg_type = muncher.get_type(name).get_param_type(param_count);
             if (arg_type != expr->get_type()) {
                 throw std::runtime_error(std::format(
-                    "Expected arguments of type {}, got argument of type 'void' for function '{}'!", MM::type_text[arg_type], name
+                    "Expected arguments of type {}, got argument of type {} for function '{}'!", arg_type.to_string(), expr->get_type().to_string(), name
                 ));
             }
         }
         else {
-            if (expr->get_type() != MM::Type::BOOL && expr->get_type() != MM::Type::INT) {
+            if (!expr->get_type().is_bool() && !expr->get_type().is_int()) {
                 throw std::runtime_error(std::format(
-                    "'print' expected arguments of type 'int' or 'bool', got argument of type '{}'!", MM::type_text[expr->get_type()]
+                    "'print' expected arguments of type 'int' or 'bool', got argument of type '{}'!", expr->get_type().to_string()
                 ));
             }
         }
@@ -135,7 +136,7 @@ void VarDecl::type_check(MM::MM& muncher) {
 
         if (expr->get_type() != type) {
             throw std::runtime_error(std::format(
-                "Expected variable declaration of type {}, got type {}!", MM::type_text[type], MM::type_text[expr->get_type()]
+                "Expected variable declaration of type {}, got type {}!", type.to_string(), expr->get_type().to_string()
             ));
         }
         muncher.scope().declare(name, type, muncher.new_temp());
@@ -150,7 +151,7 @@ void Assign::type_check(MM::MM& muncher) {
 
     if (expr->get_type() != var_type) {
         throw std::runtime_error(std::format(
-            "Expected Variable Declaration of type {}, got type {}!", MM::type_text[var_type], MM::type_text[expr->get_type()]
+            "Expected Variable Declaration of type {}, got type {}!", var_type.to_string(), expr->get_type().to_string()
         ));
     }
 }
@@ -158,9 +159,9 @@ void Assign::type_check(MM::MM& muncher) {
 void Call::type_check(MM::MM& muncher) {
     eval->type_check(muncher);
 
-    if (eval->get_type() != MM::Type::VOID) {
+    if (!eval->get_type().is_void()) {
         std::cout << std::format(
-            "Warning! Called procedure of type '{}' without using the result!", MM::type_text[eval->get_type()]
+            "Warning! Called procedure of type '{}' without using the result!", eval->get_type().to_string()
         ) << "\n";
     }
 }
@@ -182,9 +183,9 @@ If Else
 void IfElse::type_check(MM::MM& muncher) {
     if (!else_branch.has_value()) {
         expr->type_check(muncher);
-        if (expr->get_type() != MM::Type::BOOL) {
+        if (!expr->get_type().is_bool()) {
             throw std::runtime_error(std::format(
-                "Expected condition of type 'bool' in 'if', got type '{}'!", MM::type_text[expr->get_type()]
+                "Expected condition of type 'bool' in 'if', got type '{}'!", expr->get_type().to_string()
             ));
         }
         
@@ -194,9 +195,9 @@ void IfElse::type_check(MM::MM& muncher) {
     }
 
     expr->type_check(muncher);
-    if (expr->get_type() != MM::Type::BOOL) {
+    if (!expr->get_type().is_bool()) {
         throw std::runtime_error(std::format(
-            "Expected condition of type 'bool' in 'if', got type '{}'!", MM::type_text[expr->get_type()]
+            "Expected condition of type 'bool' in 'if', got type '{}'!", expr->get_type().to_string()
         ));
     }
     
@@ -213,9 +214,9 @@ void While::type_check(MM::MM& muncher) {
 
     expr->type_check(muncher);
 
-    if (MM::Type::BOOL != expr->get_type()) {
+    if (!expr->get_type().is_bool()) {
         throw std::runtime_error(std::format(
-            "Expected while condition of type 'bool', got type '{}'", MM::type_text[expr->get_type()]
+            "Expected while condition of type 'bool', got type '{}'", expr->get_type().to_string()
         ));
     }
 
@@ -223,6 +224,35 @@ void While::type_check(MM::MM& muncher) {
 
     muncher.pop_break_point();
     muncher.pop_continue_point();
+}
+
+/*
+Lambdas
+*/
+
+void Lambda::type_check(MM::MM& muncher) {
+    // create new scope for the lambda
+    muncher.push_scope();
+    muncher.scope().set_function_type(return_type->to_mm_type());
+
+    for (auto &param : params) {
+        auto [name, type] = param.get();
+        muncher.scope().declare(name, type, muncher.new_param_temp());
+    }
+
+    block->type_check(muncher);
+    muncher.pop_scope();
+    
+    // declare the lambda, only after processing its content
+    std::vector<MM::Type> param_types;
+    for (auto &param : params)
+        param_types.push_back(param.type);
+
+    auto lambda_type = MM::Type::Function(param_types, return_type->to_mm_type());
+#ifdef DEBUG
+    std::cout << "Lambda " << name << " has type " << lambda_type.to_string() << "\n";
+#endif
+    muncher.scope().declare(name, lambda_type, muncher.new_temp());
 }
 
 /*
@@ -235,19 +265,18 @@ void GlobalVarDecl::type_check(MM::MM& muncher) {
 
         if (expr->get_type() != type) {
             throw std::runtime_error(std::format(
-                "Expected Variable Declaration of type {}, got type {}!", MM::type_text[type], MM::type_text[expr->get_type()]
+                "Expected Variable Declaration of type {}, got type {}!", type.to_string(), expr->get_type().to_string()
             ));
         }
     }
 }
 
 void ProcDecl::type_check(MM::MM& muncher) {
-    muncher.scope().set_function_type(MM::lexer_to_mm_type[return_type.get_type()]);
+    muncher.scope().set_function_type(return_type->to_mm_type());
 
     for (auto &param : params) {
-        auto [name, type] = param;
-        auto arg_type = MM::lexer_to_mm_type[type.get_type()];
-        muncher.scope().declare(name, arg_type, muncher.new_param_temp());
+        auto [name, type] = param.get();
+        muncher.scope().declare(name, type, muncher.new_param_temp());
     }
 
     block->type_check(muncher);
@@ -265,7 +294,7 @@ void Return::type_check(MM::MM& muncher) {
 
     if (type != expr->get_type()) {
         throw std::runtime_error(std::format(
-            "Return has wrong type! Expected '{}', got '{}'!", MM::type_text[type], MM::type_text[expr->get_type()]
+            "Return has wrong type! Expected '{}', got '{}'!", type.to_string(), expr->get_type().to_string()
         ));
     }
 }

@@ -1,5 +1,6 @@
 #include "declarations.h"
 #include "block.h"
+#include "expression.h" // for type matching
 
 namespace Grammar::Declarations {
 
@@ -100,16 +101,17 @@ std::unique_ptr<AST::Declaration> ProcDecl::match(parser::Parser& parser) {
 
         parser.next();
 
-        auto type = parser.peek();
-        if (!type.is_type(lexer::INT) && !type.is_type(lexer::BOOL)) {
-            throw std::runtime_error(std::format(
-                "Error at row {}, col {}! Expected type in procedure '{}' argument declaration!", type.get_row(), type.get_col(), name.get_text()
-            ));
-        }
-        parser.next();
+        auto type = Expressions::Type::match(parser);
 
-        for (auto &name : names)
-            params.push_back({name, type});
+        // if (!type || type->is_void()) {
+        //     throw std::runtime_error(std::format(
+        //         "Error at row {}, col {}! Expected type in procedure '{}' argument declaration!", parser.peek().get_row(), parser.peek().get_col(), name.get_text()
+        //     ));
+        // }
+
+        for (auto &name : names) {
+            params.push_back(AST::Param(name, std::make_unique<AST::Type>(*type)));
+        }
 
         if (parser.expect(lexer::COMMA))
             parser.next();
@@ -119,22 +121,22 @@ std::unique_ptr<AST::Declaration> ProcDecl::match(parser::Parser& parser) {
         return nullptr;
     parser.next();
 
-    // ugly, will repair later
-    auto return_type = lexer::Token(lexer::VOID, "void", parser.peek().get_row(), parser.peek().get_col());
+    auto return_type = std::make_unique<AST::Type>(AST::Type::Void());
     if (parser.expect(lexer::COLON)) {
         parser.next();
 
-        return_type = parser.peek();
-        if (!return_type.is_type(lexer::INT) && !return_type.is_type(lexer::BOOL))
+        return_type = Expressions::Type::match(parser);
+
+        // only first order, non-void, return types are allowed
+        if (!return_type->is_first_order() || return_type->is_void())
             return nullptr;
-        parser.next();
     }
 
     auto block = Grammar::Statements::Block::match(parser);
     if (!block)
         return nullptr;
 
-    return std::make_unique<AST::ProcDecl>(name.get_text(), return_type, std::move(params), std::move(block));
+    return std::make_unique<AST::ProcDecl>(name.get_text(), std::move(return_type), std::move(params), std::move(block));
 }
 
 // (GLOBALVARDECL | PROCDECL)*

@@ -41,6 +41,10 @@ std::unique_ptr<AST::Statement> Statement::match(parser::Parser& parser) {
         return stmt;
     parser.set_pos(start_pos);
 
+    if (auto stmt = Lambda::match(parser))
+        return stmt;
+    parser.set_pos(start_pos);
+
     return nullptr;
 }
 

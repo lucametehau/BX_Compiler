@@ -149,7 +149,7 @@ Function/Procedure evaluation
     std::size_t param_count = 1;
 
     if (name == "print") {
-        if (params[0]->get_type() == MM::Type::BOOL)
+        if (params[0]->get_type().is_bool())
             name = "__bx_print_bool";
         else
             name = "__bx_print_int";
@@ -158,14 +158,14 @@ Function/Procedure evaluation
     for (auto &expr : params) {
         auto arg_type = expr->get_type();
 
-        if (arg_type == MM::Type::INT) {
+        if (arg_type.is_int()) {
             auto expr_munch = expr->munch(muncher);
             auto result_temp = expr_munch.back().get_result();
 
             utils::concat(instr, expr_munch);
             param_temps.push_back(result_temp);
         }
-        else if (arg_type == MM::Type::BOOL) {
+        else if (arg_type.is_bool()) {
             auto label_true = muncher.new_label();
             auto label_false = muncher.new_label();
             auto label_end = muncher.new_label();
@@ -224,7 +224,7 @@ Function/Procedure evaluation
         ));
     }
 
-    if (type == MM::Type::VOID) {
+    if (type.is_void()) {
         instr.push_back(TAC(
             "call",
             { "@" + name, std::to_string(params.size()) }
@@ -249,14 +249,14 @@ Function/Procedure evaluation
     for (auto &expr : params) {
         auto arg_type = expr->get_type();
 
-        if (arg_type == MM::Type::INT) {
+        if (arg_type.is_int()) {
             auto expr_munch = expr->munch(muncher);
             auto result_temp = expr_munch.back().get_result();
 
             utils::concat(instr, expr_munch);
             param_temps.push_back(result_temp);
         }
-        else if (arg_type == MM::Type::BOOL) {
+        else if (arg_type.is_bool()) {
             auto label_true = muncher.new_label();
             auto label_false = muncher.new_label();
             auto label_end = muncher.new_label();
@@ -363,7 +363,7 @@ Statements
     auto temp = muncher.get_temp(name);
     auto var_type = muncher.get_type(name);
 
-    if (var_type == MM::Type::INT) {
+    if (var_type.is_int()) {
         auto expr_munch = expr->munch(muncher);
         
         expr_munch.push_back(TAC(
@@ -565,7 +565,7 @@ Declarations
 [[nodiscard]] std::vector<TAC> GlobalVarDecl::munch(MM::MM& muncher) {
     std::vector<TAC> instr;
     for (auto &[name, expr] : var_inits) {
-        if (type == MM::Type::INT) {
+        if (type.is_int()) {
             auto expr_munch = expr->munch(muncher);
 
             if (expr_munch.size() != 1 || expr_munch.back().get_opcode() != "const") {
@@ -602,11 +602,10 @@ Declarations
     // muncher.scope().declare(name, MM::lexer_to_mm_type[return_type.get_type()], muncher.new_temp());
     muncher.push_scope();
     muncher.init_function_scope();
-    muncher.scope().set_function_type(MM::lexer_to_mm_type[return_type.get_type()]);
+    muncher.scope().set_function_type(return_type->to_mm_type());
 
     for (auto &param : params) {
-        auto [name, type] = param;
-        auto arg_type = MM::lexer_to_mm_type[type.get_type()];
+        auto [name, arg_type] = param.get();
         auto param_temp = muncher.new_temp();
 
         // immediately move params into temporaries
@@ -637,7 +636,7 @@ Declarations
 
     utils::concat(instr, block_munch);
 
-    if (MM::lexer_to_mm_type[return_type.get_type()] == MM::Type::VOID) {
+    if (return_type->is_void()) {
         // mark the end of a void function
         instr.push_back(TAC(
             "ret",
@@ -647,7 +646,7 @@ Declarations
     else {
         if (instr.back().get_opcode() != "ret") {
             throw std::runtime_error(std::format(
-                "Function {} has type {}, but has no return!", name, return_type.get_text()
+                "Function {} has type {}, but has no return!", name, return_type->to_string()
             ));
         }
     }
@@ -671,7 +670,7 @@ Declarations
     // we have a return expression
     // compare with current function's type
     auto type = muncher.get_curr_function_type();
-    if (type == MM::Type::INT) {
+    if (type.is_int()) {
         instr = expr->munch(muncher);
         args = { instr.back().get_result() };
         instr.push_back(TAC(
@@ -685,7 +684,7 @@ Declarations
             { instr.back().get_result() }
         ));
     }
-    else if (type == MM::Type::BOOL) {
+    else if (type.is_bool()) {
         auto label_true = muncher.new_label();
         auto label_false = muncher.new_label();
 

@@ -1,6 +1,6 @@
 CXX = clang++
 CXXFLAGS = -Wall -Wextra -std=c++20
-TARGET = main.exe
+TARGET = bxc.exe
 
 ifeq ($(OS),Windows_NT)
 	SRC_TEMP = $(wildcard *.cpp) $(wildcard lexer/*.cpp) $(wildcard parser/*.cpp) $(wildcard ast/*.cpp) $(wildcard asm/*.cpp) $(wildcard optimizations/*.cpp)

@@ -28,12 +28,117 @@ inline std::ostream& operator << (std::ostream& os,  std::unique_ptr<AST>& ast) 
 }
 
 /*
+Type (AST)
+*/
+
+struct Type : AST {
+    enum Kind { INT, BOOL, VOID, FUNCTION } kind;
+
+    std::vector<std::unique_ptr<Type>> param_types;
+    std::unique_ptr<Type> return_type;
+
+    Type() = default;
+    Type(Kind kind) : kind(kind) {}
+
+    Type(const Type& other) : kind(other.kind) {
+        param_types.reserve(other.param_types.size());
+        for (const auto& p : other.param_types)
+            param_types.push_back(std::make_unique<Type>(*p));
+        if (other.return_type)
+            return_type = std::make_unique<Type>(*other.return_type);
+    }
+
+    Type& operator=(const Type& other) {
+        if (this != &other) {
+            kind = other.kind;
+            param_types.clear();
+            param_types.reserve(other.param_types.size());
+            for (const auto& p : other.param_types)
+                param_types.push_back(std::make_unique<Type>(*p));
+            if (other.return_type)
+                return_type = std::make_unique<Type>(*other.return_type);
+            else
+                return_type = nullptr;
+        }
+        return *this;
+    }
+
+    static Type Int()  { return Type(INT); }
+    static Type Bool() { return Type(BOOL); }
+    static Type Void() { return Type(VOID); }
+
+    static Type Function(std::vector<std::unique_ptr<Type>> params, std::unique_ptr<Type> ret) {
+        Type t(FUNCTION);
+        t.param_types.reserve(params.size());
+        for (const auto& p : params)
+            t.param_types.push_back(std::make_unique<Type>(*p));
+        t.return_type = std::move(ret);
+        return t;
+    }
+
+    [[nodiscard]] std::string to_string() const {
+        switch (kind) {
+            case INT: return "int";
+            case BOOL: return "bool";
+            case VOID: return "void";
+            case FUNCTION: {
+                std::string s = "function(";
+                for (size_t i = 0; i < param_types.size(); i++) {
+                    s += param_types[i]->to_string();
+                    if (i + 1 < param_types.size()) s += ", ";
+                }
+                s += ") -> " + return_type->to_string();
+                return s;
+            }
+        }
+        return "<?>";
+    }
+
+    MM::Type to_mm_type() {
+        switch (kind) {
+            case INT: return MM::Type::Int();
+            case BOOL: return MM::Type::Bool();
+            case VOID: return MM::Type::Void();
+            case FUNCTION: {
+                std::vector<MM::Type> params;
+                for (auto &p : param_types)
+                    params.push_back(p->to_mm_type());
+                return MM::Type::Function(params, return_type->to_mm_type());
+            }
+        }
+
+        throw std::runtime_error(
+            "Unexpected type kind!"
+        );
+    }
+
+    constexpr bool is_first_order() const {
+        return kind == INT || kind == BOOL || kind == VOID;
+    }
+
+    constexpr bool is_void() const {
+        return kind == VOID;
+    }
+
+    void print(std::ostream& os, int spaces = 0) override {
+        os << std::string(2 * spaces, ' ') << "[Type] " << to_string() << "\n";
+    }
+
+    std::vector<TAC> munch([[maybe_unused]] MM::MM& muncher) override {
+        return {};
+    }
+
+    void type_check([[maybe_unused]] MM::MM& muncher) override {}
+};
+
+
+/*
 Expressions
 */
 
 struct Expression : AST {
 protected:
-    MM::Type type = MM::Type::VOID;
+    MM::Type type = MM::Type::Void();
 
 public:
     void print(std::ostream& os, int spaces = 0) override = 0;
@@ -54,7 +159,7 @@ struct NumberExpression : Expression {
     int64_t value;
 
     NumberExpression(int64_t value) : value(value) {
-        type = MM::Type::INT;
+        type = MM::Type::Int();
     }
 
     void print(std::ostream& os, int spaces = 0) override {
@@ -87,7 +192,7 @@ struct BoolExpression : Expression {
 
     BoolExpression(std::string s_value) {
         value = s_value == "true";
-        type = MM::Type::BOOL;
+        type = MM::Type::Bool();
     }
 
     void print(std::ostream& os, int spaces = 0) override {
@@ -183,25 +288,35 @@ struct Statement : AST {
 
 struct Param {
     std::string name;
-    lexer::Token type;
+    std::unique_ptr<Type> declaration_type;
+    MM::Type type;
 
-    Param(std::string name, lexer::Token type) : name(name), type(type) {}
+    Param(std::string name, std::unique_ptr<Type> _declaration_type) 
+        : name(name), declaration_type(std::move(_declaration_type)) {
+        type = declaration_type->to_mm_type();
+    }
 
     void print(std::ostream& os, int spaces = 0) {
-        os << std::string(2 * spaces, ' ') << "[Param] " << name << " : " << type.get_text() << "\n";
+        os << std::string(2 * spaces, ' ') << "[Param] " << name << " : " << declaration_type->to_string() << "\n";
     }
+
+    // gets name and muncher type of parameter
+    std::pair<std::string, MM::Type> get() {
+        return make_pair(name, type);
+    }
+
+    void type_check([[maybe_unused]] MM::MM& muncher);  
 };
 
 struct VarDecl : Statement {
     std::vector<std::pair<std::string, std::unique_ptr<Expression>>> var_inits;
     MM::Type type;
 
-    VarDecl(std::vector<std::pair<std::string, std::unique_ptr<Expression>>> var_inits, lexer::Token _type) : var_inits(std::move(var_inits)) {
-        type = MM::lexer_to_mm_type[_type.get_type()];
-    }
+    VarDecl(std::vector<std::pair<std::string, std::unique_ptr<Expression>>> var_inits, lexer::Token _type) 
+        : var_inits(std::move(var_inits)), type(MM::lexer_to_mm_type[_type.get_type()]) {}
 
     void print(std::ostream& os, int spaces = 0) override {
-        os << std::string(2 * spaces, ' ') << "[VarDecl] Type " << MM::type_text[type] << "\n";
+        os << std::string(2 * spaces, ' ') << "[VarDecl] " << type.to_string() << "\n";
         for (auto &[name, expr] : var_inits) {
             os << std::string(2 * spaces + 2, ' ') << name << " = \n";
             if (expr)
@@ -360,6 +475,33 @@ struct While : Statement {
 };
 
 /*
+Lambda
+*/
+struct Lambda : Statement {
+    std::string name;
+    std::unique_ptr<Type> return_type;
+    std::vector<Param> params;
+    std::unique_ptr<Block> block;
+
+    Lambda(std::string name, std::unique_ptr<Type> return_type, std::vector<Param> params, std::unique_ptr<Block> block) 
+        : name(name), return_type(std::move(return_type)), params(std::move(params)), block(std::move(block)) {}
+
+    void print(std::ostream& os, int spaces = 0) override {
+        os << std::string(2 * spaces, ' ') << "[Lambda] " << name << " -> " << return_type->to_string() << "\n";
+        for (auto &param : params)
+            param.print(os, spaces + 1);
+        if (block)
+            block->print(os, spaces + 1);
+    }
+
+    [[nodiscard]] std::vector<TAC> munch([[maybe_unused]] MM::MM& muncher) override {
+        return {};
+    }
+
+    void type_check(MM::MM& muncher) override;
+};
+
+/*
 Declarations
 */
 struct Declaration : AST {
@@ -374,12 +516,11 @@ struct GlobalVarDecl : Declaration {
     std::vector<std::pair<std::string, std::unique_ptr<Expression>>> var_inits;
     MM::Type type;
 
-    GlobalVarDecl(std::vector<std::pair<std::string, std::unique_ptr<Expression>>> var_inits, lexer::Token _type) : var_inits(std::move(var_inits)) {
-        type = MM::lexer_to_mm_type[_type.get_type()];
-    }
+    GlobalVarDecl(std::vector<std::pair<std::string, std::unique_ptr<Expression>>> var_inits, lexer::Token _type) 
+        : var_inits(std::move(var_inits)), type(MM::lexer_to_mm_type[_type.get_type()]) {}
 
     void print(std::ostream& os, int spaces = 0) override {
-        os << std::string(2 * spaces, ' ') << "[VarDecl] Type " << MM::type_text[type] << "\n";
+        os << std::string(2 * spaces, ' ') << "[VarDecl] " << type.to_string() << "\n";
         for (auto &[name, expr] : var_inits) {
             os << std::string(2 * spaces + 2, ' ') << name << " = \n";
             if (expr)
@@ -405,21 +546,17 @@ struct GlobalVarDecl : Declaration {
 
 struct ProcDecl : Declaration {
     std::string name;
-    lexer::Token return_type;
+    std::unique_ptr<Type> return_type;
     std::vector<Param> params;
     std::unique_ptr<Block> block;
 
-    ProcDecl(std::string name, lexer::Token return_type, std::vector<Param> params, std::unique_ptr<Block> block) 
-        : name(name), return_type(return_type), params(std::move(params)), block(std::move(block)) {}
+    ProcDecl(std::string name, std::unique_ptr<Type> return_type, std::vector<Param> params, std::unique_ptr<Block> block) 
+        : name(name), return_type(std::move(return_type)), params(std::move(params)), block(std::move(block)) {}
 
     void print(std::ostream& os, int spaces = 0) override {
-        os << std::string(2 * spaces, ' ') << "[Procedure] " << name;
-        if (return_type.is_type(lexer::INT) || return_type.is_type(lexer::BOOL))
-            os << " -> " << return_type.get_text();
-        os << "\n";
-        for (auto &param : params) {
+        os << std::string(2 * spaces, ' ') << "[Procedure] " << name << " -> " << return_type->to_string() << "\n";
+        for (auto &param : params)
             param.print(os, spaces + 1);
-        }
         if (block)
             block->print(os, spaces + 1);
     }
@@ -433,24 +570,27 @@ struct ProcDecl : Declaration {
             ));
         }
 
-        if (name == "main" && return_type.get_type() != lexer::VOID) {
+        if (name == "main" && !return_type->is_void()) {
             throw std::runtime_error(std::format(
                 "Function main expected 'void' type!"
             ));
         }
 
 #ifdef DEBUG
-        std::cout << "Declared " << name << " with type " << return_type.get_text() << "\n";
+        std::cout << "Declared " << name << " with type " << return_type->to_string() << "\n";
 #endif
-        muncher.scope().declare(name, MM::lexer_to_mm_type[return_type.get_type()], muncher.new_temp(), true);
 
+        std::vector<MM::Type> param_types;
         for (std::size_t i = 0; i < params.size(); i++) {
 #ifdef DEBUG
-            std::cout << "Declared arg " << i << " with type " << params[i].type.get_text() << "\n";
+            std::cout << "Declared arg " << i << " with type " << params[i].type.to_string() << "\n";
 #endif
-            muncher.scope().set_arg_type(name, i, MM::lexer_to_mm_type[params[i].type.get_type()]);
+            param_types.push_back(params[i].type);
         }
-    }    
+
+        MM::Type type = MM::Type::Function(param_types, return_type->to_mm_type());
+        muncher.scope().declare(name, type, muncher.new_temp());
+    }
 
     void type_check(MM::MM& muncher) override;
 };

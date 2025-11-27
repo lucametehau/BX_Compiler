@@ -6,50 +6,127 @@
 #include <iostream>
 #include <optional>
 #include <format>
+#include <memory>
 #include "tac.h"
 #include "../lexer/token.h"
 
 namespace MM {
 
-enum class Type {
-    INT,
-    BOOL,
-    VOID,
-};
+struct Type {
+    enum Kind {
+        INT,
+        BOOL,
+        VOID,
+        FUNCTION
+    } kind;
 
-inline std::map<Type, std::string> type_text = {
-    {Type::INT, "int"}, {Type::BOOL, "bool"}, {Type::VOID, "void"}
+    std::vector<Type> param_types;
+    std::unique_ptr<Type> return_type; // todo, make unique_ptr
+
+    Type() = default;
+    Type(Kind k) : kind(k) {}
+
+    Type(const Type& other) : kind(other.kind), param_types(other.param_types) {
+        if (other.return_type)
+            return_type = std::make_unique<Type>(*other.return_type);
+    }
+
+    Type& operator=(const Type& other) {
+        if (this != &other) {
+            kind = other.kind;
+            param_types = other.param_types;
+            if (other.return_type)
+                return_type = std::make_unique<Type>(*other.return_type);
+            else
+                return_type = nullptr;
+        }
+        return *this;
+    }
+
+    static Type Int()  { return Type(INT); }
+    static Type Bool() { return Type(BOOL); }
+    static Type Void() { return Type(VOID); }
+
+    static Type Function(std::vector<Type> params, Type ret) {
+        Type t(FUNCTION);
+        t.param_types = std::move(params);
+        t.return_type = std::make_unique<Type>(ret);
+        return t;
+    }
+
+    bool operator == (const Type &other) const {
+        if (kind != other.kind)
+            return false;
+        
+        return kind != FUNCTION || 
+               (param_types == other.param_types && 
+               *return_type == *other.return_type);
+    }
+
+    constexpr bool is_int() const { return kind == INT; }
+    constexpr bool is_bool() const { return kind == BOOL; }
+    constexpr bool is_void() const { return kind == VOID; }
+
+    constexpr bool is_first_order() const {
+        return kind == INT || kind == BOOL || kind == VOID;
+    }
+
+    constexpr bool is_function() const { return kind == FUNCTION; }
+
+    const Type get_param_type(std::size_t ind) const {
+        assert (kind == FUNCTION);
+        assert (ind < param_types.size());
+        return param_types[ind];
+    }
+
+    const Type get_return_type() const {
+        assert (kind == FUNCTION);
+        assert (return_type);
+        return *return_type;
+    }
+
+    std::string to_string() const {
+        switch (kind) {
+            case INT: return "int";
+            case BOOL: return "bool";
+            case VOID: return "void";
+            case FUNCTION: {
+                std::string s = "function(";
+                for (size_t i = 0; i < param_types.size(); i++) {
+                    s += param_types[i].to_string();
+                    if (i + 1 < param_types.size()) s += ", ";
+                }
+                s += ") -> " + return_type->to_string();
+                return s;
+            }
+        }
+        return "<?>";
+    }
 };
 
 inline std::map<lexer::Type, Type> lexer_to_mm_type = {
-    {lexer::INT, Type::INT}, {lexer::BOOL, Type::BOOL}, {lexer::VOID, Type::VOID}
+    {lexer::INT, Type::Int()}, {lexer::BOOL, Type::Bool()}, {lexer::VOID, Type::Void()}
 };
 
 struct Symbol {
     std::string name;
     Type type;
     std::string temp; // temporary
-    bool is_function; // used to identify function symbols
 };
 
 class Scope {
 private:
     std::map<std::string, Symbol> temp_map;
     std::optional<Type> function_type;
-    std::map<std::pair<std::string, std::size_t>, Type> arg_type;
 
 public:
-    void declare(std::string name, Type type, std::string temp, bool is_function = false) {
-        temp_map[name] = Symbol{name, type, temp, is_function};
+    void declare(std::string name, Type type, std::string temp) {
+        temp_map[name] = Symbol{name, type, temp};
     }
 
     // sets the type of the function in which the scope is
     void set_function_type(Type type) {
         function_type = type;
-    }
-
-    void set_arg_type(std::string name, std::size_t arg_id, Type type) {
-        arg_type[{name, arg_id}] = type;
     }
 
     [[nodiscard]] std::string get_temp(const std::string& name) const {
@@ -66,16 +143,6 @@ public:
 
     [[nodiscard]] std::optional<Type> get_current_function_type() const {
         return function_type;
-    }
-
-    [[nodiscard]] Type get_function_arg_type(std::string name, std::size_t arg_id) const {
-        auto it = arg_type.find({name, arg_id});
-        if (it == arg_type.end()) {
-            throw std::runtime_error(std::format(
-                "Function '{}' called but not defined!", name
-            ));
-        }
-        return it->second;
     }
 
     [[nodiscard]] bool is_declared(const std::string& name) const {
@@ -170,11 +237,6 @@ public:
                 return it->get_current_function_type().value();
         }
         throw std::runtime_error("Not in a function's scope!");
-    }
-
-    // gets the type of the function in which we currently are
-    [[nodiscard]] Type get_function_arg_type(std::string name, std::size_t arg_id) const {
-        return scopes.begin()->get_function_arg_type(name, arg_id);
     }
 
     [[nodiscard]] bool is_declared(const std::string& name) const {
