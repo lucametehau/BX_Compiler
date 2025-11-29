@@ -158,7 +158,7 @@ Function/Procedure evaluation
     for (auto &expr : params) {
         auto arg_type = expr->get_type();
 
-        if (arg_type.is_int()) {
+        if (arg_type.is_int() || arg_type.is_function()) {
             auto expr_munch = expr->munch(muncher);
             auto result_temp = expr_munch.back().get_result();
 
@@ -224,16 +224,33 @@ Function/Procedure evaluation
         ));
     }
 
+    std::string fat_temp;
+
+    // normal functions have their temporary start with '#'
+    if (muncher.is_defined(name) && muncher.get_temp(name)[0] != '#') {
+        fat_temp = muncher.get_temp(name);
+    }
+    else {
+        auto code_temp = muncher.new_temp();
+        auto sl_temp   = muncher.new_temp();
+
+        instr.push_back(TAC("const", {"@" + name}, code_temp));
+        instr.push_back(TAC("const", {"0"}, sl_temp));
+
+        fat_temp = muncher.new_temp();
+        instr.push_back(TAC("make_fat", {code_temp, sl_temp}, fat_temp));
+    }
+
     if (type.is_void()) {
         instr.push_back(TAC(
             "call",
-            { "@" + name, std::to_string(params.size()) }
+            { fat_temp, std::to_string(params.size()) }
         ));
     }
     else {
         instr.push_back(TAC(
             "call",
-            { "@" + name, std::to_string(params.size()) },
+            { fat_temp, std::to_string(params.size()) },
             muncher.new_temp()
         ));
     }
@@ -559,6 +576,84 @@ While
 }
 
 /*
+Lambdas
+*/
+
+[[nodiscard]] std::vector<TAC> Lambda::munch(MM::MM& muncher) {
+    std::vector<TAC> instr, args_instr, body_instr;
+
+    auto lambda_name = muncher.get_function_tree() + name;
+    auto code_pointer = muncher.new_temp();
+    instr.push_back(TAC(
+        "const",
+        { lambda_name },
+        code_pointer
+    ));
+
+    auto static_link = muncher.new_temp();
+    instr.push_back(TAC(
+        "copy",
+        { muncher.get_frame_pointer_temp() },
+        static_link
+    ));
+
+    auto fat_pointer = muncher.new_temp();
+    instr.push_back(TAC(
+        "make_fat",
+        { code_pointer, static_link },
+        fat_pointer
+    ));
+
+    // needed for Eval::munch
+    // unintuitive, lambdas have declaration type the return type
+    // normal functions have Function() type...
+    muncher.scope().declare(name, return_type->to_mm_type(), fat_pointer);
+
+    body_instr.push_back(TAC(
+        "proc",
+        { },
+        lambda_name 
+    ));
+
+    muncher.push_scope();
+    muncher.init_function_scope();
+    muncher.scope().set_function(name, return_type->to_mm_type());
+
+    for (auto &param : params) {
+        auto [name, arg_type] = param.get();
+        muncher.scope().declare(name, arg_type, muncher.new_param_temp());
+    }
+
+    auto block_munch = block->munch(muncher);
+    utils::concat(body_instr, block_munch);
+
+    if (return_type->is_void()) {
+        // mark the end of a void lambda
+        body_instr.push_back(TAC(
+            "ret",
+            {}
+        ));
+    }
+    else {
+        if (body_instr.back().get_opcode() != "ret") {
+            throw std::runtime_error(std::format(
+                "Lambda {} has type {}, but has no return!", name, return_type->to_string()
+            ));
+        }
+    }
+
+    muncher.add_lambda(lambda_name, body_instr);
+
+    muncher.pop_scope();
+
+#ifdef DEBUG
+    std::cout << "Finished munching lambda " << lambda_name << "\n";
+#endif
+
+    return instr;
+}
+
+/*
 Declarations
 */
 
@@ -598,11 +693,9 @@ Declarations
     std::vector<TAC> instr, args_instr;
     std::vector<std::string> args;
 
-    // function already declared in Program::munch
-    // muncher.scope().declare(name, MM::lexer_to_mm_type[return_type.get_type()], muncher.new_temp());
     muncher.push_scope();
     muncher.init_function_scope();
-    muncher.scope().set_function_type(return_type->to_mm_type());
+    muncher.scope().set_function(name, return_type->to_mm_type());
 
     for (auto &param : params) {
         auto [name, arg_type] = param.get();
@@ -748,6 +841,12 @@ Program
         auto decl_munch = declaration->munch(muncher);
         utils::concat(instr, decl_munch);
     }
+
+    std::cout << "Appending lambdas...\n";
+
+    // process lambdas after everything else
+    for (auto &[name, lambda_munch] : muncher.get_lambdas())
+        utils::concat(instr, lambda_munch);
 
     muncher.pop_scope();
 

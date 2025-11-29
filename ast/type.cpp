@@ -233,7 +233,7 @@ Lambdas
 void Lambda::type_check(MM::MM& muncher) {
     // create new scope for the lambda
     muncher.push_scope();
-    muncher.scope().set_function_type(return_type->to_mm_type());
+    muncher.scope().set_function(name, return_type->to_mm_type());
 
     for (auto &param : params) {
         auto [name, type] = param.get();
@@ -272,7 +272,7 @@ void GlobalVarDecl::type_check(MM::MM& muncher) {
 }
 
 void ProcDecl::type_check(MM::MM& muncher) {
-    muncher.scope().set_function_type(return_type->to_mm_type());
+    muncher.scope().set_function(name, return_type->to_mm_type());
 
     for (auto &param : params) {
         auto [name, type] = param.get();

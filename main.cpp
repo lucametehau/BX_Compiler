@@ -57,9 +57,12 @@ int main(int argc, char** argv) {
     ast->type_check(muncher);
 
     // munch instructions
-    // std::cout << "Munching AST...\n";
-    // auto instr = ast->munch(muncher);
-    // muncher.jsonify(file_prefix + ".tac.json", instr); 
+    std::cout << "Munching AST...\n";
+    auto instr = ast->munch(muncher);
+    muncher.jsonify(file_prefix + ".tac.json", instr); 
+
+    // for (auto &tac : instr)
+    //     std::cout << tac << "\n";
     
     // // assembling
     // std::cout << "Assembling...\n";

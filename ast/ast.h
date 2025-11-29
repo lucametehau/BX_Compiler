@@ -494,9 +494,7 @@ struct Lambda : Statement {
             block->print(os, spaces + 1);
     }
 
-    [[nodiscard]] std::vector<TAC> munch([[maybe_unused]] MM::MM& muncher) override {
-        return {};
-    }
+    [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher) override;
 
     void type_check(MM::MM& muncher) override;
 };
@@ -576,10 +574,6 @@ struct ProcDecl : Declaration {
             ));
         }
 
-#ifdef DEBUG
-        std::cout << "Declared " << name << " with type " << return_type->to_string() << "\n";
-#endif
-
         std::vector<MM::Type> param_types;
         for (std::size_t i = 0; i < params.size(); i++) {
 #ifdef DEBUG
@@ -589,7 +583,11 @@ struct ProcDecl : Declaration {
         }
 
         MM::Type type = MM::Type::Function(param_types, return_type->to_mm_type());
-        muncher.scope().declare(name, type, muncher.new_temp());
+        muncher.scope().declare(name, type, "#" + muncher.new_temp());
+
+#ifdef DEBUG
+        std::cout << "Declared " << name << " with type " << type.to_string() << "\n";
+#endif
     }
 
     void type_check(MM::MM& muncher) override;
