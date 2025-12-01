@@ -48,7 +48,7 @@ std::unique_ptr<AST::Statement> Lambda::match(parser::Parser& parser) {
     parser.next();
 
 #ifdef DEBUG
-    std::cout << "Matching proc " << name.get_text() << "\n";
+    std::cout << "Matching lambda " << name.get_text() << "\n";
 #endif
 
     std::vector<AST::Param> params;
@@ -108,6 +108,10 @@ std::unique_ptr<AST::Statement> Lambda::match(parser::Parser& parser) {
     auto block = Grammar::Statements::Block::match(parser);
     if (!block)
         return nullptr;
+
+#ifdef DEBUG
+    std::cout << "Matched lambda " << name.get_text() << "\n";
+#endif
 
     return std::make_unique<AST::Lambda>(name.get_text(), std::move(return_type), std::move(params), std::move(block));
 }

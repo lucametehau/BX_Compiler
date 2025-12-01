@@ -19,6 +19,9 @@ private:
 
 public:
     void declare(std::string name, Type type, Temporary temp) {
+#ifdef DEBUG
+        std::cout << "Declared " << name << " with type " << type.to_string() << "\n";
+#endif
         temp_map[name] = Symbol{name, type, temp};
     }
 

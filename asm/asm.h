@@ -15,7 +15,7 @@ inline const std::array<std::string, 6> arg_registers = {
 class Assembler {
 private:
     MM::MM muncher;
-    int args_on_stack;
+    int args_on_stack, static_link_arg;
     std::size_t stack_offset, stack_size;
     std::vector<TAC> instr;
     std::map<std::size_t, std::string> param_register;

@@ -30,6 +30,7 @@ void Assembler::assemble(std::ofstream& os) {
 void Assembler::assemble_proc(std::ofstream& os, std::size_t start, std::size_t finish) {
     // compute needed registers
     stack_size = 0;
+    static_link_arg = 0;
 
     std::size_t mn = 1e9, mx = 0;
     for (auto i = start + 1; i <= finish; i++) {
@@ -103,7 +104,7 @@ void Assembler::assemble_instr(std::ofstream& os, TAC& tac) {
         os << "\tmovq %r10, " << stack_register(tac.get_result()) << "\n";
     }
     else if (op == "call") {
-        os << "\tcallq " << args[0].substr(1) << "\n";
+        os << "\tcall *" << stack_register(args[0]) << "\n";
 
         if (args_on_stack)
             os << "\taddq $" << 8 * ((args_on_stack + 1) / 2 * 2) << ", %rsp\n";
@@ -150,12 +151,19 @@ void Assembler::assemble_instr(std::ofstream& os, TAC& tac) {
     else if (op == "param") {
         auto id = std::stoi(tac.get_result());
 
+        static_link_arg = std::max(static_link_arg, id);
+
         if (id <= 6)
             os << "\tmovq " << stack_register(args[0]) << ", " << arg_registers[id - 1] << "\n";
         else {
             os << "\tpushq " << stack_register(args[0]) << "\n";
             args_on_stack++;
         }
+    }
+    else if (op == "get_fp") {
+        // os << "\tmovq " << stack_register("%p" + std::to_string(static_link_arg)) << ", %r10\n";
+        os << "\tmovq $0, %r10\n";
+        os << "\tmovq %r10, " << stack_register(tac.get_result()) << "\n";
     }
     else {
         throw std::runtime_error("Unrecognized operator " + op);

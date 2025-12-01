@@ -158,12 +158,13 @@ Function/Procedure evaluation
     for (auto &expr : params) {
         auto arg_type = expr->get_type();
 
-        if (arg_type.is_int() || arg_type.is_function()) {
+        if (arg_type.is_int()) {
             auto expr_munch = expr->munch(muncher);
             auto result_temp = expr_munch.back().get_result();
 
             utils::concat(instr, expr_munch);
             param_temps.push_back(result_temp);
+            param_count++;
         }
         else if (arg_type.is_bool()) {
             auto label_true = muncher.new_label();
@@ -208,46 +209,79 @@ Function/Procedure evaluation
             ));
 
             param_temps.push_back(result_temp);
+            param_count++;
         }
-        param_count++;
+        else if (arg_type.is_function()) {
+            std::string func_name = dynamic_cast<IdentExpression*>(expr.get())->name;
+            std::string code_pointer = muncher.new_temp();
+            std::string static_link = muncher.new_temp();
+
+            if (muncher.get_temp(func_name)[0] == '#') {
+                instr.push_back(TAC(
+                    "const",
+                    { func_name },
+                    code_pointer
+                ));
+            }
+            else {
+                instr.push_back(TAC(
+                    "copy",
+                    { muncher.get_temp(func_name) },
+                    code_pointer
+                ));
+            }
+
+            instr.push_back(TAC(
+                "copy",
+                { muncher.get_temp(func_name + "$static_link") },
+                static_link
+            ));
+
+            param_temps.push_back(code_pointer);
+            param_temps.push_back(static_link);
+            param_count += 2;
+        }
     }
 
     std::string code_pointer;
     std::string static_link;
 
-    // fat pointer call
-    // std::cout << muncher.is_declared(name) << " " << muncher.get_type(name).to_string() << " " << name << "\n";
+    // not a global function call
     if (muncher.is_defined(name) && muncher.get_temp(name)[0] == '%') {
-        auto fat_temp = muncher.get_temp(name);
-
         code_pointer = muncher.new_temp();
         static_link = muncher.new_temp();
 
         instr.push_back(TAC(
-            "extract_code",
-            { fat_temp },
+            "copy",
+            { muncher.get_temp(name) },
             code_pointer
         ));
 
         instr.push_back(TAC(
-            "extract_sl",
-            { fat_temp },
+            "copy",
+            { muncher.get_temp(name + "$static_link") },
             static_link
         ));
     }
     // normal function call
     else {
         code_pointer = muncher.new_temp();
-        static_link = "0";
+        static_link = muncher.new_temp();
 
         instr.push_back(TAC(
             "const",
-            { "@" + name },
+            { name },
             code_pointer
         ));
 
         instr.push_back(TAC(
             "const", 
+            { "0" }, 
+            static_link
+        ));
+
+        instr.push_back(TAC(
+            "copy", 
             { static_link }, 
             muncher.new_temp()
         ));
@@ -255,6 +289,15 @@ Function/Procedure evaluation
 
     // add params in reverse order
     reverse(param_temps.begin(), param_temps.end());
+
+    param_count++;
+
+    // static link is last parameter
+    instr.push_back(TAC(
+        "param",
+        { static_link },
+        std::to_string(--param_count)
+    ));
 
     // set args only after processing all
     for (auto &temp : param_temps) {
@@ -264,13 +307,6 @@ Function/Procedure evaluation
             std::to_string(--param_count)
         ));
     }
-
-    // static link is param 0
-    instr.push_back(TAC(
-        "param",
-        { static_link },
-        "0"
-    ));
 
     if (type.is_void()) {
         instr.push_back(TAC(
@@ -621,24 +657,17 @@ Lambdas
         code_pointer
     ));
 
+    // get current static link
     auto static_link = muncher.new_temp();
     instr.push_back(TAC(
-        "get_frame_pointer",
+        "get_fp",
         { },
         static_link
     ));
 
-    auto fat_pointer = muncher.new_temp();
-    instr.push_back(TAC(
-        "make_fat",
-        { code_pointer, static_link },
-        fat_pointer
-    ));
-
-    // needed for Eval::munch
-    // unintuitive, lambdas have declaration type the return type
-    // normal functions have Function() type...
-    muncher.scope().declare(name, return_type->to_mm_type(), fat_pointer);
+    // declare function and its static_link
+    muncher.scope().declare(name, return_type->to_mm_type(), code_pointer);
+    muncher.scope().declare(name + "$static_link", MM::Type::Int(), static_link);
 
     body_instr.push_back(TAC(
         "proc",
@@ -655,24 +684,44 @@ Lambdas
         { muncher.new_label() }
     ));
 
-    body_instr.push_back(TAC(
-        "copy",
-        { muncher.new_param_temp() },
-        static_link
-    ));
-
     for (auto &param : params) {
         auto [name, arg_type] = param.get();
         auto param_temp = muncher.new_temp();
 
         // immediately move params into temporaries
-        body_instr.push_back(TAC(
-            "copy",
-            { muncher.new_param_temp() },
-            param_temp
-        ));
-        muncher.scope().declare(name, arg_type, param_temp);
+        if (!arg_type.is_function()) {
+            body_instr.push_back(TAC(
+                "copy",
+                { muncher.new_param_temp() },
+                param_temp
+            ));
+            muncher.scope().declare(name, arg_type, param_temp);
+        }
+        else {
+            body_instr.push_back(TAC(
+                "copy",
+                { muncher.new_param_temp() },
+                param_temp
+            ));
+
+            muncher.scope().declare(name, arg_type, param_temp);
+
+            param_temp = muncher.new_temp();
+            body_instr.push_back(TAC(
+                "copy",
+                { muncher.new_param_temp() },
+                param_temp
+            ));
+
+            muncher.scope().declare(name + "$static_link", MM::Type::Int(), param_temp);
+        }
     }
+
+    body_instr.push_back(TAC(
+        "copy",
+        { muncher.new_param_temp() },
+        static_link
+    ));
 
     auto block_munch = block->munch(muncher);
     utils::concat(body_instr, block_munch);
@@ -750,27 +799,49 @@ Declarations
     muncher.push_function_scope(static_link);
     muncher.scope().set_function(name, return_type->to_mm_type());
 
-    args_instr.push_back(TAC(
-        "copy",
-        { muncher.new_param_temp() },
-        static_link
-    ));
-
-    args.push_back("$static_link");
-
     for (auto &param : params) {
         auto [name, arg_type] = param.get();
         auto param_temp = muncher.new_temp();
 
         // immediately move params into temporaries
-        args_instr.push_back(TAC(
-            "copy",
-            { muncher.new_param_temp() },
-            param_temp
-        ));
-        muncher.scope().declare(name, arg_type, param_temp);
-        args.push_back(name);
+        if (!arg_type.is_function()) {
+            args_instr.push_back(TAC(
+                "copy",
+                { muncher.new_param_temp() },
+                param_temp
+            ));
+            muncher.scope().declare(name, arg_type, param_temp);
+            args.push_back(name);
+        }
+        else {
+            args_instr.push_back(TAC(
+                "copy",
+                { muncher.new_param_temp() },
+                param_temp
+            ));
+
+            muncher.scope().declare(name, arg_type, param_temp);
+            args.push_back(name);
+
+            param_temp = muncher.new_temp();
+            args_instr.push_back(TAC(
+                "copy",
+                { muncher.new_param_temp() },
+                param_temp
+            ));
+
+            muncher.scope().declare(name + "$static_link", MM::Type::Int(), param_temp);
+            args.push_back(name + "$static_link");
+        }
     }
+
+    args.push_back("$static_link");
+
+    args_instr.push_back(TAC(
+        "copy",
+        { muncher.new_param_temp() },
+        static_link
+    ));
 
     instr.push_back(TAC(
         "proc",

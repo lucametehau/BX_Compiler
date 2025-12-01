@@ -98,7 +98,7 @@ public:
             if (it->is_declared(name))
                 return it->get_temp(name);
         }
-        throw std::runtime_error("Variable " + name + " undeclared!");
+        throw std::runtime_error("Variable " + name + " undeclared, unable to retrieve temporary!");
     }
 
     // gets type of variable with name <name>
@@ -107,7 +107,7 @@ public:
             if (it->is_declared(name))
                 return it->get_type(name);
         }
-        throw std::runtime_error("Variable " + name + " undeclared!");
+        throw std::runtime_error("Variable " + name + " undeclared, unable to retrieve type!");
     }
 
     // gets the type of the function in which we currently are
@@ -121,10 +121,10 @@ public:
 
     // gets the function imbrication tree as string
     [[nodiscard]] std::string get_function_tree() const {
-        std::string name = "@";
+        std::string name = "";
         for (auto it = scopes.begin(); it != scopes.end(); it++) {
             if (it->get_current_function_name().has_value())
-                name += it->get_current_function_name().value() + "::";
+                name += it->get_current_function_name().value() + "___";
         }
         return name;
     }
