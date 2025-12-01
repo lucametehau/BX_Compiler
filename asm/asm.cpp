@@ -27,7 +27,7 @@ void Assembler::assemble() {
         for (auto i = start + 1; i <= finish; i++) {
             auto tac = instr[i];
 
-            if (!tac.has_result() || tac.get_result()[0] != '%') 
+            if (!tac.has_result() || tac.get_result()[0] != '%' || tac.get_result()[1] == '.') 
                 continue;
 
             func_of_temp[tac.get_result()] = func_name;
