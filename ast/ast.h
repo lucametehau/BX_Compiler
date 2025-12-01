@@ -584,6 +584,7 @@ struct ProcDecl : Declaration {
 
         MM::Type type = MM::Type::Function(param_types, return_type->to_mm_type());
         muncher.scope().declare(name, type, "#" + muncher.new_temp());
+        // muncher.scope().declare(name + "$static_link", MM::Type::Int(), muncher.new_temp());
 
 #ifdef DEBUG
         std::cout << "Declared " << name << " with type " << type.to_string() << "\n";

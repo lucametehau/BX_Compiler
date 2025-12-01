@@ -222,6 +222,12 @@ Function/Procedure evaluation
                     { func_name },
                     code_pointer
                 ));
+
+                instr.push_back(TAC(
+                    "const",
+                    { "0" },
+                    static_link
+                ));
             }
             else {
                 instr.push_back(TAC(
@@ -229,13 +235,13 @@ Function/Procedure evaluation
                     { muncher.get_temp(func_name) },
                     code_pointer
                 ));
-            }
 
-            instr.push_back(TAC(
-                "copy",
-                { muncher.get_temp(func_name + "$static_link") },
-                static_link
-            ));
+                instr.push_back(TAC(
+                    "copy",
+                    { muncher.get_temp(func_name + "$static_link") },
+                    static_link
+                ));
+            }
 
             param_temps.push_back(code_pointer);
             param_temps.push_back(static_link);

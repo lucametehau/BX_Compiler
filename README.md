@@ -25,6 +25,8 @@ There aren't many features available, some are WIP:
 - Integers
 - Booleans
 - Variables
+- Lambdas (They automatically capture everthing)
+- Passing functions as variables
 - Assignments
 - Printing
 - Functions/Procedures
