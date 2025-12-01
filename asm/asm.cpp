@@ -5,7 +5,6 @@ namespace assembly {
 
 Assembler::Assembler(MM::MM& muncher, std::vector<TAC>& _instr, std::ofstream& os) : muncher(muncher), args_on_stack(0), instr(_instr), os(os) {
     bounds.clear();
-    defined.clear();
     func_of_temp.clear();
     asm_name.clear();
 }

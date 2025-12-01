@@ -17,15 +17,24 @@ private:
     MM::MM muncher;
     int args_on_stack, static_link_arg;
     std::size_t stack_offset, stack_size;
+    
+    // current function name
     std::string curr_func_name;
+
+    // last register used for walking the static link chain
     std::string last_capture_register;
 
     std::vector<TAC> instr;
 
     std::map<std::size_t, std::string> param_register;
-    std::map<std::string, std::set<std::string>> defined;
+
+    // function in which temporary is defined
     std::map<std::string, std::string> func_of_temp;
+
+    // keeps the min and max temporaries which are strictly from a function
     std::map<std::string, std::pair<std::size_t, std::size_t>> bounds;
+
+    // keeps the assembly name given to a function
     std::map<std::string, std::string> asm_name;
 
     std::ofstream& os;
