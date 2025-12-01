@@ -717,9 +717,10 @@ Lambdas
         }
     }
 
+    // mark this copy so it doesnt get removed in CFG
     body_instr.push_back(TAC(
         "copy",
-        { muncher.new_param_temp() },
+        { muncher.new_param_temp(), "static_link_flag" },
         muncher.new_temp()
     ));
 
@@ -837,9 +838,10 @@ Declarations
 
     args.push_back("$static_link");
 
+    // mark this copy so that it doesn't get removed in CFG
     args_instr.push_back(TAC(
         "copy",
-        { muncher.new_param_temp() },
+        { muncher.new_param_temp(), "static_link_flag" },
         muncher.new_temp()
     ));
 

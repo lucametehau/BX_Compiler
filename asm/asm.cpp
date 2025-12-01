@@ -7,6 +7,7 @@ Assembler::Assembler(MM::MM& muncher, std::vector<TAC>& _instr, std::ofstream& o
     bounds.clear();
     defined.clear();
     func_of_temp.clear();
+    asm_name.clear();
 }
 
 void Assembler::assemble() {
@@ -146,12 +147,12 @@ void Assembler::assemble_instr(TAC& tac) {
         os << "\tmovq $" << args[0] << ", " << result_temp << "\n";
     }
     else if (op == "copy") {
-        assert(args.size() == 1 && tac.has_result());
+        assert(args.size() >= 1 && tac.has_result());
         auto arg0_temp = stack_register(args[0]);
         auto result_temp = stack_register(tac.get_result());
 
         // special case, if we copy the static link, allocate it at -8(%rbp)
-        if (args[0][1] == 'p' && std::stoi(args[0].substr(2)) == static_link_arg) {
+        if (args.size() == 2) {
             result_temp = "-8(%rbp)";
         }
 

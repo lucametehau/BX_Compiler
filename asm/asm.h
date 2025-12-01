@@ -18,7 +18,10 @@ private:
     int args_on_stack, static_link_arg;
     std::size_t stack_offset, stack_size;
     std::string curr_func_name;
+    std::string last_capture_register;
+
     std::vector<TAC> instr;
+
     std::map<std::size_t, std::string> param_register;
     std::map<std::string, std::set<std::string>> defined;
     std::map<std::string, std::string> func_of_temp;
@@ -76,12 +79,19 @@ private:
                 delta++;
             }
 
-            os << "\n\t# Capture access, delta = " << delta << " from " << curr_func_name << " to " << origin_func << "\n";
-            os << "\tmovq -8(%rbp), %r11\n";
-            for (int i = 1; i < delta; i++)
-                os << "\tmovq -8(%r11), %r11\n";
+            // special case:
+            // when doing a binary operation with captures and removing dead-copies
+            // we actually remove capture copies
+            // since we were using the same %r11 to iterate on the static link chain
+            // we actually overwrite stuff. a simple solution is to alternate to %r12
+            last_capture_register = last_capture_register != "%r11" ? "%r11" : "%r12";
 
-            return compute_offset(temp, bounds[curr].first, "%r11");
+            os << "\n\t# Capture access, delta = " << delta << " from " << curr_func_name << " to " << origin_func << "\n";
+            os << "\tmovq -8(%rbp), " << last_capture_register << "\n";
+            for (int i = 1; i < delta; i++)
+                os << "\tmovq -8(" << last_capture_register << "), " << last_capture_register << "\n";
+
+            return compute_offset(temp, bounds[curr].first, last_capture_register);
         }
     }
 
