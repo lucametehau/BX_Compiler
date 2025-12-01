@@ -110,5 +110,58 @@ std::unique_ptr<AST::Expression> Eval::match(parser::Parser& parser) {
 
     return std::make_unique<AST::Eval>(name.get_text(), std::move(params));
 }
+
+std::unique_ptr<AST::Type> Type::match(parser::Parser &parser) {
+    auto kind = parser.peek();
+    parser.next();
+    if (kind.is_type(lexer::INT))
+        return std::make_unique<AST::Type>(AST::Type::Int());
+
+    if (kind.is_type(lexer::BOOL))
+        return std::make_unique<AST::Type>(AST::Type::Bool());
+
+    if (kind.is_type(lexer::VOID))
+        return std::make_unique<AST::Type>(AST::Type::Void());
+
+    if (!kind.is_type(lexer::FUNCTION))
+        return nullptr;
+    
+    // function
+    if (!parser.expect(lexer::LPAREN))
+        return nullptr;
+    parser.next();
+
+    std::vector<std::unique_ptr<AST::Type>> param_types;
+
+    while (!parser.expect(lexer::RPAREN)) {
+        auto type = Type::match(parser);
+
+        // if (!type || type.is_void()) {
+        //     throw std::runtime_error(std::format(
+        //         "Error at row {}, col {}! Expected type in procedure '{}' argument declaration!", type.get_row(), type.get_col(), name.get_text()
+        //     ));
+        // }
+
+        param_types.push_back(std::move(type));
+
+        if (parser.expect(lexer::COMMA))
+            parser.next();
+    }
+
+    if (!parser.expect(lexer::RPAREN))
+        return nullptr;
+    parser.next();
+
+    if (!parser.expect(lexer::ARROW))
+        return nullptr;
+    parser.next();
+
+    // return type can only be first order
+    auto return_type = Type::match(parser);
+    if (!return_type->is_first_order())
+        return nullptr;
+
+    return std::make_unique<AST::Type>(AST::Type::Function(std::move(param_types), std::move(return_type)));
+}
     
 }; // namespace Grammar::Expressions

@@ -60,12 +60,15 @@ int main(int argc, char** argv) {
     std::cout << "Munching AST...\n";
     auto instr = ast->munch(muncher);
     muncher.jsonify(file_prefix + ".tac.json", instr); 
+
+    // for (auto &tac : instr)
+    //     std::cout << tac << "\n";
     
     // assembling
     std::cout << "Assembling...\n";
     std::ofstream asm_file(file_prefix + ".s");
-    assembly::Assembler assembler(muncher, instr);
-    assembler.assemble(asm_file);
+    assembly::Assembler assembler(muncher, instr, asm_file);
+    assembler.assemble();
 
     std::cout << "Applying optimizations...\n";
 

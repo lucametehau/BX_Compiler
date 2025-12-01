@@ -539,7 +539,7 @@ void CFG::eliminate_dead_copies() {
 
             for (std::size_t i = 0; i < instr.size(); i++) {
                 auto tac = instr[i];
-                if (tac->get_opcode() != "copy") {
+                if (tac->get_opcode() != "copy" || tac->get_args().size() > 1) {
                     new_instr.push_back(tac);
                     continue;
                 }

@@ -13,5 +13,9 @@ struct Expression {
 struct Eval {
     static std::unique_ptr<AST::Expression> match(parser::Parser& parser);
 };
+
+struct Type {
+    static std::unique_ptr<AST::Type> match(parser::Parser& parser);
+};
     
 }; // namespace Grammar::Expressions
