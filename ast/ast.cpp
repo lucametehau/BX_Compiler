@@ -720,7 +720,7 @@ Lambdas
     body_instr.push_back(TAC(
         "copy",
         { muncher.new_param_temp() },
-        static_link
+        muncher.new_temp()
     ));
 
     auto block_munch = block->munch(muncher);
@@ -840,7 +840,7 @@ Declarations
     args_instr.push_back(TAC(
         "copy",
         { muncher.new_param_temp() },
-        static_link
+        muncher.new_temp()
     ));
 
     instr.push_back(TAC(

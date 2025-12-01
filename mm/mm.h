@@ -124,7 +124,7 @@ public:
         std::string name = "";
         for (auto it = scopes.begin(); it != scopes.end(); it++) {
             if (it->get_current_function_name().has_value())
-                name += it->get_current_function_name().value() + "___";
+                name += it->get_current_function_name().value() + "::";
         }
         return name;
     }
