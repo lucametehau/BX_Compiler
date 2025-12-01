@@ -39,14 +39,8 @@ public:
 
     void pop_continue_point() { continue_point_stack.pop_back(); }
 
-    void push_function_scope(Temporary static_link) {
-        static_links.push_back(static_link);
+    void push_function_scope() {
         param_temp_ind = 0; 
-    }
-
-    void pop_function_scope() {
-        assert (!static_links.empty());
-        static_links.pop_back();
     }
 
     void add_lambda(std::string name, std::vector<TAC> &lambda_instr) {
@@ -129,10 +123,6 @@ public:
         return name;
     }
 
-    [[nodiscard]] Temporary get_frame_pointer_temp() const {
-        return "%fp";
-    }
-
     // checks if variable is declared in most recent scope
     [[nodiscard]] bool is_declared(const std::string& name) const {
         return !scopes.empty() && scopes.rbegin()->is_declared(name);
@@ -145,26 +135,6 @@ public:
                 return true;
         }
         return false;
-    }
-
-    // Find the depth of a variable/function definition
-    // 0 = Global, 1 = Main, 2 = Nested inside Main, etc.
-    [[nodiscard]] int get_decl_depth(const std::string& name) const {
-        for (int i = scopes.size() - 1; i >= 0; i--) {
-            if (scopes[i].is_declared(name)) {
-                return i;
-            }
-        }
-        return -1; // Not found
-    }
-
-    // Get current nesting depth
-    [[nodiscard]] int get_current_depth() const {
-        return scopes.size() - 1;
-    }
-
-    [[nodiscard]] Temporary get_current_static_link_temp() const {
-        return static_links.back();
     }
 
     void process(std::vector<TAC>& instructions) {

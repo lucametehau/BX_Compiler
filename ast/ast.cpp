@@ -682,7 +682,7 @@ Lambdas
     ));
 
     muncher.push_scope();
-    muncher.push_function_scope(static_link);
+    muncher.push_function_scope();
     muncher.scope().set_function(name, return_type->to_mm_type());
 
     body_instr.push_back(TAC(
@@ -750,7 +750,6 @@ Lambdas
 
     muncher.add_lambda(lambda_name, body_instr);
 
-    muncher.pop_function_scope();
     muncher.pop_scope();
 
 #ifdef DEBUG
@@ -803,7 +802,7 @@ Declarations
     auto static_link = muncher.new_temp();
 
     muncher.push_scope();
-    muncher.push_function_scope(static_link);
+    muncher.push_function_scope();
     muncher.scope().set_function(name, return_type->to_mm_type());
 
     for (auto &param : params) {
@@ -884,7 +883,6 @@ Declarations
         }
     }
 
-    muncher.pop_function_scope();
     muncher.pop_scope();
 
     return instr;
