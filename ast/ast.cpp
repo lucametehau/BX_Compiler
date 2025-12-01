@@ -345,6 +345,7 @@ Function/Procedure evaluation
 
             utils::concat(instr, expr_munch);
             param_temps.push_back(result_temp);
+            param_count++;
         }
         else if (arg_type.is_bool()) {
             auto label_true = muncher.new_label();
@@ -389,12 +390,101 @@ Function/Procedure evaluation
             ));
 
             param_temps.push_back(result_temp);
+            param_count++;
         }
-        param_count++;
+        else if (arg_type.is_function()) {
+            std::string func_name = dynamic_cast<IdentExpression*>(expr.get())->name;
+            std::string code_pointer = muncher.new_temp();
+            std::string static_link = muncher.new_temp();
+
+            if (muncher.get_temp(func_name)[0] == '#') {
+                instr.push_back(TAC(
+                    "const",
+                    { func_name },
+                    code_pointer
+                ));
+
+                instr.push_back(TAC(
+                    "const",
+                    { "0" },
+                    static_link
+                ));
+            }
+            else {
+                instr.push_back(TAC(
+                    "copy",
+                    { muncher.get_temp(func_name) },
+                    code_pointer
+                ));
+
+                instr.push_back(TAC(
+                    "copy",
+                    { muncher.get_temp(func_name + "$static_link") },
+                    static_link
+                ));
+            }
+
+            param_temps.push_back(code_pointer);
+            param_temps.push_back(static_link);
+            param_count += 2;
+        }
+    }
+
+    std::string code_pointer;
+    std::string static_link;
+
+    // not a global function call
+    if (muncher.is_defined(name) && muncher.get_temp(name)[0] == '%') {
+        code_pointer = muncher.new_temp();
+        static_link = muncher.new_temp();
+
+        instr.push_back(TAC(
+            "copy",
+            { muncher.get_temp(name) },
+            code_pointer
+        ));
+
+        instr.push_back(TAC(
+            "copy",
+            { muncher.get_temp(name + "$static_link") },
+            static_link
+        ));
+    }
+    // normal function call
+    else {
+        code_pointer = muncher.new_temp();
+        static_link = muncher.new_temp();
+
+        instr.push_back(TAC(
+            "const",
+            { name },
+            code_pointer
+        ));
+
+        instr.push_back(TAC(
+            "const", 
+            { "0" }, 
+            static_link
+        ));
+
+        instr.push_back(TAC(
+            "copy", 
+            { static_link }, 
+            muncher.new_temp()
+        ));
     }
 
     // add params in reverse order
     reverse(param_temps.begin(), param_temps.end());
+
+    param_count++;
+
+    // static link is last parameter
+    instr.push_back(TAC(
+        "param",
+        { static_link },
+        std::to_string(--param_count)
+    ));
 
     // set args only after processing all
     for (auto &temp : param_temps) {
@@ -406,9 +496,10 @@ Function/Procedure evaluation
     }
 
     auto res = muncher.new_temp();
+    
     instr.push_back(TAC(
         "call",
-        { "@" + name, std::to_string(params.size()) },
+        { code_pointer, std::to_string(params.size() + 1) },
         res
     ));
 
