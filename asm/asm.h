@@ -8,7 +8,9 @@
 
 namespace assembly {
 
-inline const std::array<std::string, 6> arg_registers = {
+using Register = std::string;
+
+inline const std::array<Register, 6> arg_registers = {
     "%rdi", "%rsi", "%rdx", "%rcx", "%r8", "%r9"
 };
 
@@ -22,14 +24,12 @@ private:
     std::string curr_func_name;
 
     // last register used for walking the static link chain
-    std::string last_capture_register;
+    Register last_capture_register;
 
     std::vector<TAC> instr;
 
-    std::map<std::size_t, std::string> param_register;
-
     // function in which temporary is defined
-    std::map<std::string, std::string> func_of_temp;
+    std::map<MM::Temporary, std::string> func_of_temp;
 
     // keeps the min and max temporaries which are strictly from a function
     std::map<std::string, std::pair<std::size_t, std::size_t>> bounds;
@@ -45,15 +45,12 @@ public:
     void assemble();
 
 private:
-    void set_param_register(std::size_t id, std::string reg) {
-        param_register[id] = reg;
-    }
 
-    std::string compute_offset(std::string temp, std::size_t offset, std::string offset_register = "%rbp") {
+    Register compute_offset(MM::Temporary temp, std::size_t offset, Register offset_register = "%rbp") {
         return "-" + std::to_string(8 * (std::stoi(temp.substr(1)) - offset + 2)) + "(" + offset_register + ")";
     }
 
-    std::string stack_register(std::string temp) {
+    Register stack_register(const MM::Temporary &temp) {
         // global variable
         if (temp[0] == '@')
             return temp.substr(1) + "(%rip)";
@@ -123,31 +120,31 @@ static const std::map<std::string, std::string> normal_binops = {
     {"add", "addq"}, {"sub", "subq"}, {"and", "andq"}, {"or", "orq"}, {"xor", "xorq"}
 };
 
-static const std::map<std::string, std::function<void(std::string, std::string, std::string, std::ofstream&)>> special_binops = {
-    {"mul", [](std::string a, std::string b, std::string res, std::ofstream& os) {
+static const std::map<std::string, std::function<void(Register, Register, Register, std::ofstream&)>> special_binops = {
+    {"mul", [](Register a, Register b, Register res, std::ofstream& os) {
         os << "\tmovq " << a << ", %rax\n";
         os << "\timulq " << b << "\n";
         os << "\tmovq %rax, " << res << "\n";
     }},
-    {"div", [](std::string a, std::string b, std::string res, std::ofstream& os) {
+    {"div", [](Register a, Register b, Register res, std::ofstream& os) {
         os << "\tmovq " << a << ", %rax\n";
         os << "\tcqto\n";
         os << "\tidivq " << b << "\n";
         os << "\tmovq %rax, " << res << "\n";
     }},
-    {"mod", [](std::string a, std::string b, std::string res, std::ofstream& os) {
+    {"mod", [](Register a, Register b, Register res, std::ofstream& os) {
         os << "\tmovq " << a << ", %rax\n";
         os << "\tcqto\n";
         os << "\tidivq " << b << "\n";
         os << "\tmovq %rdx, " << res << "\n";
     }},
-    {"shl", [](std::string a, std::string b, std::string res, std::ofstream& os) {
+    {"shl", [](Register a, Register b, Register res, std::ofstream& os) {
         os << "\tmovq " << a << ", %r10\n";
         os << "\tmovq " << b << ", %rcx\n";
         os << "\tsalq %cl, %r10\n";
         os << "\tmovq %r10, " << res << "\n";
     }},
-    {"shr", [](std::string a, std::string b, std::string res, std::ofstream& os) {
+    {"shr", [](Register a, Register b, Register res, std::ofstream& os) {
         os << "\tmovq " << a << ", %r10\n";
         os << "\tmovq " << b << ", %rcx\n";
         os << "\tsarq %cl, %r10\n";
