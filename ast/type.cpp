@@ -130,6 +130,10 @@ void Eval::type_check(MM::MM& muncher) {
 Statements
 */
 
+void ExpressionStatement::type_check(MM::MM& muncher) {
+    expr->type_check(muncher);
+}
+
 void VarDecl::type_check(MM::MM& muncher) {
     for (auto &[name, expr] : var_inits) {
         expr->type_check(muncher);

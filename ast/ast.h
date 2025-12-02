@@ -308,6 +308,22 @@ struct Param {
     void type_check([[maybe_unused]] MM::MM& muncher);  
 };
 
+struct ExpressionStatement : Statement {
+    std::unique_ptr<Expression> expr;
+
+    ExpressionStatement(std::unique_ptr<Expression> expr) : expr(std::move(expr)) {}
+
+    void print(std::ostream &os, int spaces = 0) override {
+        os << std::string(2 * spaces, ' ') << "[ExpressionStmt]\n";
+        if (expr)
+            expr->print(os, spaces + 1);
+    }
+
+    [[nodiscard]] std::vector<TAC> munch(MM::MM& muncher) override;    
+
+    void type_check(MM::MM& muncher) override;
+};
+
 struct VarDecl : Statement {
     std::vector<std::pair<std::string, std::unique_ptr<Expression>>> var_inits;
     MM::Type type;

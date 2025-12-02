@@ -6,7 +6,7 @@
 
 namespace Grammar::Statements {
 
-// VARDECL | ASSIGN | CALL | IFELSE | WHILE | JUMP | BLOCK | RETURN
+// VARDECL | ASSIGN | CALL | IFELSE | WHILE | JUMP | BLOCK | RETURN | LAMBDA
 std::unique_ptr<AST::Statement> Statement::match(parser::Parser& parser) {
     auto start_pos = parser.peek_pos();
     if (auto stmt = VarDecl::match(parser))
@@ -45,6 +45,10 @@ std::unique_ptr<AST::Statement> Statement::match(parser::Parser& parser) {
         return stmt;
     parser.set_pos(start_pos);
 
+    if (auto stmt = ExpressionStatement::match(parser))
+        return stmt;
+    parser.set_pos(start_pos);
+    
     return nullptr;
 }
 
@@ -112,6 +116,20 @@ std::unique_ptr<AST::Statement> Assign::match(parser::Parser& parser) {
     parser.next();
 
     return std::make_unique<AST::Assign>(name.get_text(), std::move(expr));
+}
+
+// EXPR;
+std::unique_ptr<AST::Statement> ExpressionStatement::match(parser::Parser& parser) {
+    auto expr = Expressions::Expression::match(parser);
+
+    if (!expr)
+        return nullptr;
+
+    if (!parser.expect(lexer::SEMICOLON))
+        return nullptr;
+    parser.next();
+
+    return std::make_unique<AST::ExpressionStatement>(std::move(expr));
 }
 
 };

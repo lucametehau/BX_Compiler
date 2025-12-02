@@ -75,6 +75,11 @@ public:
         return args[0];
     }
 
+    [[nodiscard]] std::string &get_arg() {
+        assert(!args.empty());
+        return args[0];
+    }
+
     [[nodiscard]] std::string get_result() const {
         assert(result.has_value());
         return result.value();

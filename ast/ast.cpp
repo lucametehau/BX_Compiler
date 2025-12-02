@@ -522,6 +522,10 @@ Function/Procedure evaluation
 Statements
 */
 
+[[nodiscard]] std::vector<TAC> ExpressionStatement::munch(MM::MM& muncher) {
+    return expr->munch(muncher);
+}
+
 [[nodiscard]] std::vector<TAC> VarDecl::munch(MM::MM& muncher) {
     std::vector<TAC> instr;
 
