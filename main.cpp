@@ -1,14 +1,15 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include <cstring>
 #include "lexer/lexer.h"
 #include "ast/declarations.h"
 #include "asm/asm.h"
 #include "optimizations/cfg.h"
 
 int main(int argc, char** argv) {
-    if (argc != 2) {
-        std::cout << "Wrong usage! Call " << argv[0] << " [filename.bx]\n";
+    if (argc < 2 || argc > 3) {
+        std::cout << "Wrong usage! Call " << argv[0] << " [filename.bx] <-fenable-opt>\n";
         return 1;
     }
 
@@ -70,16 +71,18 @@ int main(int argc, char** argv) {
     assembly::Assembler assembler(muncher, instr, asm_file);
     assembler.assemble();
 
-    std::cout << "Applying optimizations...\n";
+    if (argc == 3 && !std::strcmp(argv[2], "-fenable-opt")) {
+        std::cout << "Applying optimizations...\n";
 
-    for (int i = 1; i <= 1; i++) {
-        std::cout << std::format("Before round #{} of optimizations, we have {} operations.\n", i, instr.size());
+        for (int i = 1; i <= 1; i++) {
+            std::cout << std::format("Before round #{} of optimizations, we have {} operations.\n", i, instr.size());
 
-        opt::optimize<opt::OptimizationType::DEAD_COPY_REMOVAL>(muncher, instr, file_prefix);
-        opt::optimize<opt::OptimizationType::JT_SEQ_UNCOND>(muncher, instr, file_prefix);
-        opt::optimize<opt::OptimizationType::JT_COND_TO_UNCOND>(muncher, instr, file_prefix);
-        opt::optimize<opt::OptimizationType::COALESCE>(muncher, instr, file_prefix);
-        std::cout << std::format("After round #{} of optimizations, we have {} operations.\n", i, instr.size());
+            opt::optimize<opt::OptimizationType::DEAD_COPY_REMOVAL>(muncher, instr, file_prefix);
+            opt::optimize<opt::OptimizationType::JT_SEQ_UNCOND>(muncher, instr, file_prefix);
+            opt::optimize<opt::OptimizationType::JT_COND_TO_UNCOND>(muncher, instr, file_prefix);
+            opt::optimize<opt::OptimizationType::COALESCE>(muncher, instr, file_prefix);
+            std::cout << std::format("After round #{} of optimizations, we have {} operations.\n", i, instr.size());
+        }
     }
     return 0;
 }
