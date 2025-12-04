@@ -93,7 +93,6 @@ void Assembler::process_proc(std::size_t start, std::size_t finish) {
 void Assembler::assemble_proc(std::size_t start, std::size_t finish) {
     // compute needed registers
     stack_size = 0;
-    static_link_arg = 0;
 
     curr_func_name = instr[start].get_result();
 
@@ -112,12 +111,6 @@ void Assembler::assemble_proc(std::size_t start, std::size_t finish) {
 #ifdef DEBUG
     std::cout << stack_size << "\n";
 #endif
-
-    for (auto i = start + 1; i <= finish; i++) {
-        auto tac = instr[i];
-        if (tac.get_args().size() == 1 && tac.get_arg()[0] == '%' && tac.get_arg()[1] == 'p')
-            static_link_arg = std::max(static_link_arg, std::stoi(tac.get_arg().substr(2)));
-    }
 
     for (auto i = start + 1; i <= finish; i++) {
         assemble_instr(instr[i]);
@@ -220,8 +213,6 @@ void Assembler::assemble_instr(TAC& tac) {
     else if (op == "param") {
         auto arg0_temp = stack_register(args[0]);
         auto id = std::stoi(tac.get_result());
-
-        static_link_arg = std::max(static_link_arg, id);
 
         if (id <= 6)
             os << "\tmovq " << arg0_temp << ", " << arg_registers[id - 1] << "\n";

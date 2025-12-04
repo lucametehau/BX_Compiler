@@ -17,7 +17,7 @@ inline const std::array<Register, 6> arg_registers = {
 class Assembler {
 private:
     MM::MM muncher;
-    int args_on_stack, static_link_arg;
+    int args_on_stack;
     std::size_t stack_offset, stack_size;
     
     // current function name
