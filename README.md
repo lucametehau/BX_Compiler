@@ -37,6 +37,14 @@ There aren't many features available, some are WIP:
 
 # Detailed description
 
+## Archiving
+
+```
+rm -f */*.d */*.o *.d *.o
+rm -f bxc.zip
+zip -r bxc.zip ast/* asm/* lexer/* mm/* optimizations/* parser/* typing/* utils/* main.cpp bxruntime.c Makefile ARCH README.md
+```
+
 ## Code organization
 
 There are 5 big parts of the project, each found in its own folder:
