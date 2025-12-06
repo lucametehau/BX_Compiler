@@ -81,6 +81,10 @@ struct Type {
         return *return_type;
     }
 
+    std::size_t get_num_params() const {
+        return param_types.size();
+    }
+
     std::string to_string() const {
         switch (kind) {
             case INT: return "int";

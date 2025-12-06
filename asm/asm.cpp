@@ -5,7 +5,7 @@ namespace assembly {
 
 Assembler::Assembler(MM::MM& muncher, std::vector<TAC>& _instr, std::ofstream& os) : muncher(muncher), args_on_stack(0), instr(_instr), os(os) {
     bounds.clear();
-    func_of_temp.clear();
+    func_of_temp = muncher.get_func_of_temps();
     asm_name.clear();
 }
 
@@ -22,15 +22,6 @@ void Assembler::assemble() {
     int func_cnt = 0;
     for (auto &[start, finish] : muncher.procs_indexes()) {
         auto func_name = instr[start].get_result();
-
-        for (auto i = start + 1; i <= finish; i++) {
-            auto tac = instr[i];
-
-            if (!tac.has_result() || tac.get_result()[0] != '%' || tac.get_result()[1] == '.') 
-                continue;
-
-            func_of_temp[tac.get_result()] = func_name;
-        }
         
         for (auto &c : func_name)
             c = (c == ':' ? '_' : c);

@@ -14,8 +14,19 @@ int main(int argc, char** argv) {
     }
 
     const std::string filename(argv[1]);
-    const std::string file_prefix = filename.substr(0, filename.find("."));
     std::cout << "Hello! Lexing file " << filename << "...\n";
+
+#ifdef TEST
+    int pos = filename.size() - 1;
+
+    while (pos >= 0 && filename[pos] != '/') 
+        pos--;
+
+    const std::string file_prefix = filename.substr(pos+1, filename.find(".", pos) - pos-1);
+#else   
+    const std::string file_prefix = filename.substr(0, filename.find("."));
+#endif
+
     std::ifstream in(filename);
 
     if (!in) {

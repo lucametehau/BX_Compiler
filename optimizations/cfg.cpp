@@ -92,13 +92,40 @@ void CFG::make_cfg(std::vector<TAC>& instr) {
     std::cout << "Making TAC from CFG\n";
 #endif
 
+    // auto temp_ind = 0;
+    std::map<MM::Temporary, MM::Temporary> new_temp;
+
+    // careful not to do this for now, would need to update muncher.func_of_temp map!!
+    auto relabel_temp = [&](MM::Temporary temp) {
+        // if (temp[0] == '%' && std::isdigit(temp[1])) {
+        //     if (new_temp.find(temp) == new_temp.end())
+        //         new_temp[temp] = "%" + std::to_string(++temp_ind);
+        //     temp = new_temp[temp];
+        // }
+        return temp;
+    };
+
+    auto relabel_instr = [&](TAC& tac) {
+        for (auto &arg : tac.get_args()) {
+            arg = relabel_temp(arg);
+        }
+
+        if (tac.has_result()) {
+            tac.set_result(relabel_temp(tac.get_result()));
+        }
+    };
+
     // treat globals separately
-    for (auto &global : muncher.get_globals())
+    for (auto &global : muncher.get_globals()) {
+        relabel_instr(global);
         instr.push_back(global);
+    }
 
     for (auto &block : blocks) {
         auto block_instr = block.get_instr();
         for (auto &t : block_instr) {
+            // std::cout << "Before " << *t << " ";
+            relabel_instr(*t);
             instr.push_back(*t);
 #ifdef DEBUG
             std::cout << *t << "\n";
@@ -436,7 +463,7 @@ void CFG::ssa_crude() {
                 }
             }
             
-            if (t.has_result() && t.get_result()[0] == '%') {
+            if (t.has_result() && t.get_result()[0] == '%' && std::isdigit(t.get_result()[1])) {
                 std::string root = t.get_result();
                 if (version_counter.count(root) == 0) {
                     version_counter[root] = 0;
@@ -471,109 +498,158 @@ void CFG::ssa_crude() {
 }
 
 void CFG::copy_propagation() {
+    // bool changed = true;
+    // while (changed) {
+    //     changed = false;
+        
+    //     // copy map: for each copy instruction %u = copy %v, map u -> v
+    //     std::map<std::string, std::string> copy_map;
+    //     for (auto &block : blocks) {
+    //         auto &instr = block.get_instr();
+    //         for (auto &tac_ptr : instr) {
+    //             if (tac_ptr->get_opcode() == "copy" && tac_ptr->has_result() && tac_ptr->get_arg()[1] != 'p') {
+    //                 std::string from = tac_ptr->get_arg();  // Assuming single arg for copy
+    //                 std::string to = tac_ptr->get_result();
+    //                 copy_map[to] = from;
+    //             }
+    //         }
+    //     }
+        
+    //     for (auto &block : blocks) {
+    //         auto &instr = block.get_instr();
+    //         for (auto &tac_ptr : instr) {
+    //             if (tac_ptr->get_opcode() == "phi") {
+    //                 auto &phi_args = tac_ptr->get_phi_args();
+    //                 for (auto &[label, temp] : phi_args) {
+    //                     if (copy_map.count(temp)) {
+    //                         phi_args[label] = copy_map[temp];
+    //                         changed = true;
+    //                     }
+    //                 }
+    //             } else {
+    //                 for (auto &arg : tac_ptr->get_args()) {
+    //                     if (copy_map.count(arg)) {
+    //                         arg = copy_map[arg];
+    //                         changed = true;
+    //                     }
+    //                 }
+    //             }
+                
+    //             if (tac_ptr->has_result() && tac_ptr->get_opcode() != "copy" && copy_map.count(tac_ptr->get_result())) {
+    //                 tac_ptr->set_result(copy_map[tac_ptr->get_result()]);
+    //                 changed = true;
+    //                 std::cout << "We changed " << *tac_ptr << "\n";
+    //             }
+    //         }
+    //     }
+        
+    //     for (auto &block : blocks) {
+    //         auto &instr = block.get_instr();
+    //         instr.erase(std::remove_if(instr.begin(), instr.end(), 
+    //             [](const std::shared_ptr<TAC>& tac) {
+    //                 return tac->get_opcode() == "copy" && 
+    //                        tac->has_result() && 
+    //                        tac->get_result() == tac->get_arg();
+    //             }), instr.end());
+    //     }
+    // }
+
+    // std::cout << "After copy propagation:\n";
+    // for (auto &block : blocks) {
+    //     std::cout << block.get_label() << "\n";
+    //     for (auto &instr : block.get_instr())
+    //         std::cout << *instr << "\n";
+    // }
+
     bool changed = true;
     while (changed) {
         changed = false;
-        
-        // copy map: for each copy instruction %u = copy %v, map u -> v
-        std::map<std::string, std::string> copy_map;
         for (auto &block : blocks) {
             auto &instr = block.get_instr();
-            for (auto &tac_ptr : instr) {
-                if (tac_ptr->get_opcode() == "copy" && tac_ptr->has_result() && tac_ptr->get_arg()[1] != 'p') {
-                    std::string from = tac_ptr->get_arg();  // Assuming single arg for copy
-                    std::string to = tac_ptr->get_result();
-                    copy_map[to] = from;
-                }
-            }
-        }
-        
-        for (auto &block : blocks) {
-            auto &instr = block.get_instr();
-            for (auto &tac_ptr : instr) {
-                if (tac_ptr->get_opcode() == "phi") {
-                    auto &phi_args = tac_ptr->get_phi_args();
-                    for (auto &[label, temp] : phi_args) {
-                        if (copy_map.count(temp)) {
-                            phi_args[label] = copy_map[temp];
+            for (std::size_t i = 0; i < instr.size(); i++) {
+                auto tac = instr[i];
+                if (tac->get_opcode() != "copy" || tac->get_args().size() > 1)
+                    continue;
+
+                auto from = tac->get_arg();
+                auto to = tac->get_result();
+
+                // we are copying a function parameter
+                // don't modify
+                if (from[1] == 'p')
+                    continue;
+
+                for (std::size_t j = i + 1; j < instr.size(); j++) {
+                    auto curr_tac = instr[j];
+
+                    // instruction changes our temporaries
+                    if (curr_tac->has_result() && (curr_tac->get_result() == from || curr_tac->get_result() == to))
+                        break;
+
+                    for (auto &arg : curr_tac->get_args()) {
+                        if (arg == to) {
+                            arg = from;
                             changed = true;
-                        }
-                    }
-                } else {
-                    for (auto &arg : tac_ptr->get_args()) {
-                        if (copy_map.count(arg)) {
-                            arg = copy_map[arg];
-                            changed = true;
+                            break;
                         }
                     }
                 }
-                
-                if (tac_ptr->has_result() && tac_ptr->get_opcode() != "copy" && copy_map.count(tac_ptr->get_result())) {
-                    tac_ptr->set_result(copy_map[tac_ptr->get_result()]);
-                    changed = true;
-                }
             }
-        }
-        
-        for (auto &block : blocks) {
-            auto &instr = block.get_instr();
-            instr.erase(std::remove_if(instr.begin(), instr.end(), 
-                [](const std::shared_ptr<TAC>& tac) {
-                    return tac->get_opcode() == "copy" && 
-                           tac->has_result() && 
-                           tac->get_result() == tac->get_arg();
-                }), instr.end());
         }
     }
 }
 
 void CFG::eliminate_dead_copies() {
-    bool changed = true;
-    while (changed) {
-        build_liveness();
-        changed = false;
-        for (auto &block : blocks) {
-            auto &instr = block.get_instr();
-            auto label = block.get_label();
-            std::vector<std::shared_ptr<TAC>> new_instr;
+    // bool changed = true;
+    // while (changed) {
+    //     build_liveness();
+    //     changed = false;
+    //     for (auto &block : blocks) {
+    //         auto &instr = block.get_instr();
+    //         auto label = block.get_label();
+    //         std::vector<std::shared_ptr<TAC>> new_instr;
 
-            for (std::size_t i = 0; i < instr.size(); i++) {
-                auto tac = instr[i];
-                if (tac->get_opcode() != "copy" || tac->get_args().size() > 1) {
-                    new_instr.push_back(tac);
-                    continue;
-                }
+    //         for (std::size_t i = 0; i < instr.size(); i++) {
+    //             auto tac = instr[i];
+    //             if (tac->get_opcode() != "copy" || tac->get_args().size() > 1) {
+    //                 new_instr.push_back(tac);
+    //                 continue;
+    //             }
 
-                bool is_dead = true;
-                auto result = tac->get_result();
-                if (block.get_live_out(i).count(result))
-                    is_dead = false;
-                else {
-                    for (auto &[son, _] : graph[block.get_label()]) {
-                        auto &succ_block = get_block(son);
-                        for (auto &succ_tac : succ_block.get_instr()) {
-                            if (succ_tac->get_opcode() == "phi") {
-                                for (auto &[pred_label, temp] : succ_tac->get_phi_args()) {
-                                    if (pred_label == block.get_label() && temp == result) {
-                                        is_dead = false;
-                                        break;
-                                    }
-                                }
-                            }
-                            if (!is_dead) break;
-                        }
-                        if (!is_dead) break;
-                    }
-                }
+    //             bool is_dead = true;
+    //             auto result = tac->get_result();
+    //             if (block.get_live_out(i).count(result))
+    //                 is_dead = false;
+    //             else {
+    //                 for (auto &[son, _] : graph[block.get_label()]) {
+    //                     auto &succ_block = get_block(son);
+    //                     for (auto &succ_tac : succ_block.get_instr()) {
+    //                         if (succ_tac->get_opcode() == "phi") {
+    //                             for (auto &[pred_label, temp] : succ_tac->get_phi_args()) {
+    //                                 if (pred_label == block.get_label() && temp == result) {
+    //                                     is_dead = false;
+    //                                     break;
+    //                                 }
+    //                             }
+    //                         }
+    //                         if (!is_dead) break;
+    //                     }
+    //                     if (!is_dead) break;
+    //                 }
+    //             }
 
-                if (!is_dead)
-                    new_instr.push_back(tac);
-                else
-                    changed = true;
-            }
+    //             if (!is_dead)
+    //                 new_instr.push_back(tac);
+    //             else
+    //                 changed = true;
+    //         }
 
-            block.set_instr(new_instr);
-        }
+    //         block.set_instr(new_instr);
+    //     }
+    // }
+    build_liveness();
+    for (auto &block : blocks) {
+        block.eliminate_dead_copies();
     }
 }
 

@@ -35,5 +35,8 @@ clean:
 debug:
 	$(MAKE) CXXFLAGS="-Wall -Wextra -std=c++20 -g -DDEBUG -O0"
 
+test:
+	$(MAKE) CXXFLAGS="-Wall -Wextra -std=c++20 -g -DDEBUG -DTEST -O0"
+
 -include $(DEPS)
 

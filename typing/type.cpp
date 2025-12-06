@@ -93,8 +93,15 @@ void Eval::type_check(MM::MM& muncher) {
     std::size_t param_count = 0;
 
     // print is a special function
-    if (name != "print")
+    if (name != "print") {
         type = muncher.get_type(name).get_return_type();
+        if (params.size() != muncher.get_type(name).get_num_params()) {
+            throw std::runtime_error(std::format(
+                "Function '{}' expected {} arguments, got only {}!", 
+                name, muncher.get_type(name).get_num_params(), params.size()
+            ));
+        }
+    }
     else {
         type = MM::Type::Void();
     }
@@ -137,6 +144,12 @@ void ExpressionStatement::type_check(MM::MM& muncher) {
 void VarDecl::type_check(MM::MM& muncher) {
     for (auto &[name, expr] : var_inits) {
         expr->type_check(muncher);
+
+        if (muncher.is_declared(name)) {
+            throw std::runtime_error(std::format(
+                "Variable '{}' already declared in this scope!", name
+            ));
+        }
 
         if (expr->get_type() != type) {
             throw std::runtime_error(std::format(
@@ -240,8 +253,14 @@ void Lambda::type_check(MM::MM& muncher) {
     muncher.scope().set_function(name, return_type->to_mm_type());
 
     for (auto &param : params) {
-        auto [name, type] = param.get();
-        muncher.scope().declare(name, type, muncher.new_param_temp());
+        auto [param_name, type] = param.get();
+        if (muncher.is_declared(param_name)) {
+            throw std::runtime_error(std::format(
+                "Duplicate parameter '{}' definition for function '{}'",
+                param_name, name
+            ));
+        }
+        muncher.scope().declare(param_name, type, muncher.new_param_temp());
     }
 
     block->type_check(muncher);
@@ -256,6 +275,13 @@ void Lambda::type_check(MM::MM& muncher) {
 #ifdef DEBUG
     std::cout << "Lambda " << name << " has type " << lambda_type.to_string() << "\n";
 #endif
+
+    if (muncher.is_declared(name)) {
+        throw std::runtime_error(std::format(
+            "Identifier {} already declared in this scope!", name
+        ));
+    }
+
     muncher.scope().declare(name, lambda_type, muncher.new_temp());
 }
 
@@ -276,18 +302,32 @@ void GlobalVarDecl::type_check(MM::MM& muncher) {
 }
 
 void ProcDecl::type_check(MM::MM& muncher) {
+    muncher.push_scope();
     muncher.scope().set_function(name, return_type->to_mm_type());
 
     for (auto &param : params) {
-        auto [name, type] = param.get();
-        muncher.scope().declare(name, type, muncher.new_param_temp());
+        auto [param_name, type] = param.get();
+        if (muncher.is_declared(param_name)) {
+            throw std::runtime_error(std::format(
+                "Duplicate parameter '{}' definition for function '{}'",
+                param_name, name
+            ));
+        }
+        muncher.scope().declare(param_name, type, muncher.new_param_temp());
     }
 
     block->type_check(muncher);
+    muncher.pop_scope();
 }
 
 void Return::type_check(MM::MM& muncher) {
     if (!expr) {
+        if (muncher.get_curr_function_type() != MM::Type::Void()) {
+            throw std::runtime_error(std::format(
+                "Empty return, expected return of type {}", 
+                muncher.get_curr_function_type().to_string()
+            ));
+        }
         return;
     }
     
@@ -317,6 +357,12 @@ void Program::type_check(MM::MM& muncher) {
     
     for (auto &declaration : declarations) {
         declaration->type_check(muncher);
+    }
+
+    if (!muncher.is_declared("main")) {
+        throw std::runtime_error(std::format(
+            "Function 'main' not declared!"
+        ));
     }
 
     muncher.pop_scope();

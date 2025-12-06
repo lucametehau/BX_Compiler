@@ -57,7 +57,7 @@ Expressions
     std::vector<TAC> expr_munch = expr->munch(muncher);
 
     expr_munch.push_back(TAC(
-        lexer::op_code.find(op)->second,
+        op == lexer::DASH ? "neg" : lexer::op_code.find(op)->second,
         { expr_munch.back().get_result() },
         muncher.new_temp()
     ));
@@ -530,11 +530,6 @@ Statements
     std::vector<TAC> instr;
 
     for (auto &[name, expr] : var_inits) {
-        if (muncher.is_declared(name)) {
-            throw std::runtime_error(std::format(
-                "Variable '{}' already declared in this scope!", name
-            ));
-        }
         auto expr_munch = expr->munch(muncher);
 
         utils::concat(instr, expr_munch);
@@ -750,7 +745,8 @@ Lambdas
 [[nodiscard]] std::vector<TAC> Lambda::munch(MM::MM& muncher) {
     std::vector<TAC> instr, args_instr, body_instr;
 
-    auto lambda_name = muncher.get_function_tree() + name;
+    auto indexed_name = name + muncher.get_function_ind();
+    auto lambda_name = muncher.get_function_tree() + indexed_name;
     auto code_pointer = muncher.new_temp();
     instr.push_back(TAC(
         "const",
@@ -778,7 +774,7 @@ Lambdas
 
     muncher.push_scope();
     muncher.push_function_scope();
-    muncher.scope().set_function(name, return_type->to_mm_type());
+    muncher.scope().set_function(indexed_name, return_type->to_mm_type());
 
     body_instr.push_back(TAC(
         "label",
@@ -845,6 +841,7 @@ Lambdas
 
     muncher.add_lambda(lambda_name, body_instr);
 
+    muncher.pop_function_scope();
     muncher.pop_scope();
 
 #ifdef DEBUG
@@ -978,6 +975,7 @@ Declarations
         }
     }
 
+    muncher.pop_function_scope();
     muncher.pop_scope();
 
     return instr;

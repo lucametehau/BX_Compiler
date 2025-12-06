@@ -1,5 +1,6 @@
 #include "lexer.h"
 #include <iostream>
+#include <format>
 
 namespace lexer {
 
@@ -24,6 +25,18 @@ void Lexer::skip_ws() {
 
         skip_ws();
     }
+
+    // in tests, there is the extern keyword, which we ignoree
+#ifdef TEST
+    if (pos + 2 < src.size() && src[pos] == 'e' && src[pos+1] == 'x' && src[pos+2] == 't') {
+        // skip everything until new line
+        while (pos < src.size() && src[pos] != '\n')
+            pos++;
+        row++, col = 1;
+
+        skip_ws();
+    }
+#endif
 }
 
 [[nodiscard]] Token Lexer::next() {
@@ -60,6 +73,12 @@ void Lexer::skip_ws() {
     // identifier
     while (pos < src.size() && (isalpha(src[pos]) || isdigit(src[pos]) || src[pos] == '_'))
         pos++, col++;
+
+    if (pos == start_pos) {
+        throw std::runtime_error(std::format(
+            "Unexpected character at row {}, col {}!", row, col
+        ));
+    }
 
     return Token{Type::IDENT, src.substr(start_pos, pos - start_pos), row, start_col};
 }

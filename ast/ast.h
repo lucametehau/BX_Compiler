@@ -586,7 +586,13 @@ struct ProcDecl : Declaration {
 
         if (name == "main" && !return_type->is_void()) {
             throw std::runtime_error(std::format(
-                "Function main expected 'void' type!"
+                "Function 'main' expected 'void' type!"
+            ));
+        }
+
+        if (name == "main" && !params.empty()) {
+            throw std::runtime_error(std::format(
+                "Function 'main' expected no argumets!"
             ));
         }
 
