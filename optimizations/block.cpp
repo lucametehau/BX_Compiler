@@ -73,4 +73,23 @@ void Block::build_def_use(Set &def_block, Set &use_block) {
 #endif
 }
 
+void Block::eliminate_dead_copies() {
+    auto instr_count = instr.size();
+    std::vector<std::shared_ptr<TAC>> new_instr;
+
+    for (std::size_t i = 0; i < instr_count; i++) {
+        auto tac = instr[i];
+        if (tac->get_opcode() != "copy" || tac->get_args().size() > 1) {
+            new_instr.push_back(tac);
+            continue;
+        }
+
+        if (live_out[i].count(tac->get_result()))
+            new_instr.push_back(tac);
+    }
+
+    instr = new_instr;
+    // don't forget to recompute everything since instructions changed!!
+}
+
 };

@@ -13,19 +13,21 @@
 namespace MM {
 
 class MM {
-    int temp_ind, label_ind, param_temp_ind;
+    int temp_ind, label_ind, param_temp_ind, function_ind;
     std::vector<Scope> scopes;
     std::vector<std::string> break_point_stack;
     std::vector<std::string> continue_point_stack;
+    std::vector<int> function_ind_stack;
     std::vector<Temporary> static_links;
 
     std::vector<std::pair<std::size_t, std::size_t>> procs;
     std::vector<TAC> globals;
 
     std::vector<std::pair<std::string, std::vector<TAC>>> lambdas;
+    std::map<Temporary, std::string> func_of_temp;
 
 public:
-    MM() : temp_ind(0), label_ind(0), break_point_stack({}), continue_point_stack({}) {}
+    MM() : temp_ind(0), label_ind(0), function_ind(0), break_point_stack({}), continue_point_stack({}) {}
 
     void push_scope() { scopes.emplace_back(); }
 
@@ -40,7 +42,12 @@ public:
     void pop_continue_point() { continue_point_stack.pop_back(); }
 
     void push_function_scope() {
+        function_ind_stack.push_back(++function_ind);
         param_temp_ind = 0; 
+    }
+
+    void pop_function_scope() {
+        function_ind_stack.pop_back();
     }
 
     void add_lambda(std::string name, std::vector<TAC> &lambda_instr) {
@@ -74,8 +81,16 @@ public:
         return lambdas;
     }
 
+    [[nodiscard]] std::map<Temporary, std::string> &get_func_of_temps() {
+        return func_of_temp;
+    }
+
     [[nodiscard]] Temporary new_temp()  {
-        return "%" + std::to_string(temp_ind++);
+        auto temp = "%" + std::to_string(temp_ind++);
+        func_of_temp[temp] = get_function_tree(); // declare temporary's function
+        func_of_temp[temp] = func_of_temp[temp].substr(0, func_of_temp[temp].size() - 2); // without the ::
+        std::cout << temp << " -> " << func_of_temp[temp] << "\n";
+        return temp;
     }
 
     [[nodiscard]] Temporary new_label()  {
@@ -84,6 +99,11 @@ public:
 
     [[nodiscard]] Temporary new_param_temp() {
         return "%p" + std::to_string(param_temp_ind++);
+    }
+
+    // + 1 since its called right before push_function_scope
+    [[nodiscard]] std::string get_function_ind() {
+        return std::to_string(function_ind + 1);
     }
 
     // gets the used temporary of the variable with name <name>
@@ -116,7 +136,7 @@ public:
     // gets the function imbrication tree as string
     [[nodiscard]] std::string get_function_tree() const {
         std::string name = "";
-        for (auto it = scopes.begin(); it != scopes.end(); it++) {
+        for (auto it = next(scopes.begin()); it != scopes.end(); it++) {
             if (it->get_current_function_name().has_value())
                 name += it->get_current_function_name().value() + "::";
         }

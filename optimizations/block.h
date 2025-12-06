@@ -50,6 +50,8 @@ public:
     void build_liveness(Set &live_in_block, Set &live_out_block);
 
     void build_def_use(Set &def_block, Set &use_block);
+
+    void eliminate_dead_copies();
 };
 
 };

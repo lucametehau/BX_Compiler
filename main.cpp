@@ -16,6 +16,10 @@ int main(int argc, char** argv) {
     const std::string filename(argv[1]);
     const std::string file_prefix = filename.substr(0, filename.find("."));
     std::cout << "Hello! Lexing file " << filename << "...\n";
+    int pos = filename.size() - 1;
+
+    while (pos >= 0 && filename[pos] != '/') pos--;
+
     std::ifstream in(filename);
 
     if (!in) {
@@ -67,7 +71,8 @@ int main(int argc, char** argv) {
     
     // assembling
     std::cout << "Assembling...\n";
-    std::ofstream asm_file(file_prefix + ".s");
+    std::cout << filename.substr(pos+1, filename.find(".", pos) - pos-1) << "\n";
+    std::ofstream asm_file(filename.substr(pos+1, filename.find(".", pos) - pos-1) + ".s");
     assembly::Assembler assembler(muncher, instr, asm_file);
     assembler.assemble();
 

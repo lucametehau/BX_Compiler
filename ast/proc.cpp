@@ -96,14 +96,14 @@ std::unique_ptr<AST::Statement> Lambda::match(parser::Parser& parser) {
         return nullptr;
     parser.next();
 
-    if (!parser.expect(lexer::COLON))
-        return nullptr;
-    parser.next();
+    auto return_type = std::make_unique<AST::Type>(AST::Type::Void());
 
-    // lambdas need a specific return type
-    auto return_type = Expressions::Type::match(parser);
-    if (!return_type || !return_type->is_first_order())
-        return nullptr;
+    if (parser.expect(lexer::COLON)) {
+        parser.next();
+        return_type = Expressions::Type::match(parser);
+        if (!return_type || !return_type->is_first_order())
+            return nullptr;
+    }
 
     auto block = Grammar::Statements::Block::match(parser);
     if (!block)

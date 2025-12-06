@@ -68,7 +68,7 @@ inline const std::map<std::string, Type> lexing_tokens = {
 inline const std::map<Type, std::string> op_code = {
     {AMP, "and"}, {DASH, "sub"}, {PLUS, "add"}, {STAR, "mul"},
     {SLASH, "div"}, {HAT, "xor"}, {PCENT, "mod"}, {PIPE, "or"},
-    {TILD, "neg"}, {LTLT, "shl"}, {GTGT, "shr"}
+    {TILD, "not"}, {LTLT, "shl"}, {GTGT, "shr"}
 };
 
 inline const std::map<Type, std::string> jump_code = {

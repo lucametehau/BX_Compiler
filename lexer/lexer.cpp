@@ -24,6 +24,15 @@ void Lexer::skip_ws() {
 
         skip_ws();
     }
+
+    if (pos + 2 < src.size() && src[pos] == 'e' && src[pos+1] == 'x' && src[pos+2] == 't') {
+        // skip everything until new line
+        while (pos < src.size() && src[pos] != '\n')
+            pos++;
+        row++, col = 1;
+
+        skip_ws();
+    }
 }
 
 [[nodiscard]] Token Lexer::next() {
