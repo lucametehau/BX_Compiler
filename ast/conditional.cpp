@@ -47,7 +47,10 @@ std::optional<std::unique_ptr<AST::Statement>> IfRest::match(parser::Parser& par
         return block;
     }
 
-    return std::nullopt;
+    throw std::runtime_error(std::format(
+        "Parsing error at row {}, col {}! Else expected a block!",
+        parser.peek().get_row(), parser.peek().get_col()
+    ));
 }
 
 };

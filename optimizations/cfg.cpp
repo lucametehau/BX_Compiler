@@ -92,7 +92,7 @@ void CFG::make_cfg(std::vector<TAC>& instr) {
     std::cout << "Making TAC from CFG\n";
 #endif
 
-    auto temp_ind = 0;
+    // auto temp_ind = 0;
     std::map<MM::Temporary, MM::Temporary> new_temp;
 
     // careful not to do this for now, would need to update muncher.func_of_temp map!!

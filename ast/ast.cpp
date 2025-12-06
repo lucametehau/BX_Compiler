@@ -530,11 +530,6 @@ Statements
     std::vector<TAC> instr;
 
     for (auto &[name, expr] : var_inits) {
-        if (muncher.is_declared(name)) {
-            throw std::runtime_error(std::format(
-                "Variable '{}' already declared in this scope!", name
-            ));
-        }
         auto expr_munch = expr->munch(muncher);
 
         utils::concat(instr, expr_munch);

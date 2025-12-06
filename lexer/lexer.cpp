@@ -1,5 +1,6 @@
 #include "lexer.h"
 #include <iostream>
+#include <format>
 
 namespace lexer {
 
@@ -69,6 +70,12 @@ void Lexer::skip_ws() {
     // identifier
     while (pos < src.size() && (isalpha(src[pos]) || isdigit(src[pos]) || src[pos] == '_'))
         pos++, col++;
+
+    if (pos == start_pos) {
+        throw std::runtime_error(std::format(
+            "Unexpected character at row {}, col {}!", row, col
+        ));
+    }
 
     return Token{Type::IDENT, src.substr(start_pos, pos - start_pos), row, start_col};
 }
