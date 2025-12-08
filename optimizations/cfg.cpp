@@ -371,9 +371,6 @@ void CFG::build_liveness() {
 }
 
 void CFG::ssa_crude() {
-    // =========================================================
-    // PART 1: LIVENESS ANALYSIS (Needed to find where to put Phis)
-    // =========================================================
     std::map<Label, Set> live_in_block, live_out_block;
     std::map<Label, Set> def_block, use_block;
 
@@ -381,7 +378,6 @@ void CFG::ssa_crude() {
         block.build_def_use(def_block[block.get_label()], use_block[block.get_label()]);
     }
 
-    // Iterative liveness
     bool changed = true;
     while (changed) {
         changed = false;
@@ -401,9 +397,6 @@ void CFG::ssa_crude() {
         }
     }
 
-    // =========================================================
-    // PART 2: INSERT PHI NODES
-    // =========================================================
     for (auto &block : blocks) {
         if (block.is_starting()) continue;
 
@@ -427,9 +420,6 @@ void CFG::ssa_crude() {
         block.get_instr().insert(insert_pos, new_instr.begin(), new_instr.end());
     }
 
-    // =========================================================
-    // PART 3: RENAMING (DFS + Stack)
-    // =========================================================
     std::map<std::string, int> version_counter;
     std::map<std::string, std::vector<std::string>> stacks;
     std::set<Label> visited;
@@ -445,9 +435,8 @@ void CFG::ssa_crude() {
         visited.insert(label);
 
         auto &block = get_block(label);
-        std::map<std::string, int> pushed_count; // For popping later
+        std::map<std::string, int> pushed_count;
 
-        // 3a. Rename Phi Results (Definitions)
         for (auto &tac : block.get_instr()) {
             if (tac->get_opcode() != "phi") continue;
             
@@ -482,16 +471,14 @@ void CFG::ssa_crude() {
             }
         }
 
-        // 3c. Update Successors' Phi Args (The Loop Fix)
         for (auto &[succ_label, _] : graph[label]) {
             auto &succ_block = get_block(succ_label);
             for (auto &tac : succ_block.get_instr()) {
                 if (tac->get_opcode() != "phi") continue;
 
                 auto &phi_args = tac->get_phi_args();
-                // If this successor expects an input from 'label' (us)
                 if (phi_args.count(label)) {
-                    std::string root = phi_args[label]; // Placeholder holds root name
+                    std::string root = phi_args[label];
                     if (!stacks[root].empty()) {
                         phi_args[label] = stacks[root].back();
                     }
@@ -499,18 +486,15 @@ void CFG::ssa_crude() {
             }
         }
 
-        // 3d. Recurse
         for (auto &[succ_label, _] : graph[label]) {
             rename(succ_label);
         }
 
-        // 3e. Pop Stacks (Backtracking)
         for (auto const& [var, count] : pushed_count) {
             for(int i=0; i<count; ++i) stacks[var].pop_back();
         }
     };
 
-    // Start renaming from entry
     for (auto &block : blocks) {
         if (block.is_starting()) {
             rename(block.get_label());
@@ -525,18 +509,14 @@ void CFG::copy_propagation() {
         changed = false;
         std::map<std::string, std::string> replacements;
 
-        // 1. Gather all copies across ALL blocks
         for (auto &block : blocks) {
             for (auto &tac : block.get_instr()) {
-                // If we find %x = copy %y
                 if (tac->get_opcode() == "copy" && tac->get_args().size() == 1) {
                     std::string to = tac->get_result();
                     std::string from = tac->get_arg();
                     
-                    // Don't propagate if copying a parameter register (optional safeguard)
                     if (from[1] == 'p') continue;
 
-                    // Record replacement: %x -> %y
                     replacements[to] = from;
                 }
             }
@@ -544,19 +524,15 @@ void CFG::copy_propagation() {
 
         if (replacements.empty()) break;
 
-        // 2. Apply replacements to usages globally
         for (auto &block : blocks) {
             for (auto &tac : block.get_instr()) {
-                // Replace in standard arguments
                 for (auto &arg : tac->get_args()) {
-                    // While loop handles chains like A->B->C
                     while (replacements.count(arg)) {
                         arg = replacements[arg];
                         changed = true;
                     }
                 }
 
-                // Replace in PHI arguments
                 if (tac->get_opcode() == "phi") {
                     auto &phi_args = tac->get_phi_args();
                     for (auto &[label, arg] : phi_args) {
@@ -570,10 +546,9 @@ void CFG::copy_propagation() {
         }
     }
 
+
+
     // propagate phis now
-
-    
-
     for (auto &block : blocks) {
         auto &instr = block.get_instr();
         
@@ -581,18 +556,14 @@ void CFG::copy_propagation() {
             if (tac->get_opcode() == "phi") {
                 std::string dest = tac->get_result();
                 
-                // For each predecessor (source of the value)
                 for (auto &[pred_label, src_temp] : tac->get_phi_args()) {
-                    // Find the predecessor block
                     auto &pred_block = get_block(pred_label);
                     auto &pred_instr = pred_block.get_instr();
                     
-                    // We must insert the copy at the END of the predecessor, 
-                    // but BEFORE the jump/branch instruction.
+                    // we must insert the copy at the END of the predecessor 
+                    // but BEFORE the jump/branch instruction
                     auto insert_pos = pred_instr.end();
                     
-                    // Move iterator back to skip jumps/branches/labels at the end
-                    // (Adjust this condition based on exactly what your jumps look like)
                     while (insert_pos != pred_instr.begin()) {
                         auto prev = std::prev(insert_pos);
                         std::string op = (*prev)->get_opcode();
@@ -603,7 +574,6 @@ void CFG::copy_propagation() {
                         }
                     }
 
-                    // Insert: %dest = copy %src_temp
                     pred_instr.insert(insert_pos, std::make_shared<TAC>(
                         "copy", std::vector<std::string>{src_temp}, dest
                     ));
@@ -612,7 +582,6 @@ void CFG::copy_propagation() {
         }
     }
 
-    // 2. Now it is safe to delete all Phis
     for (auto &block : blocks) {
         auto &instr = block.get_instr();
         for (auto it = instr.begin(); it != instr.end(); ) {
