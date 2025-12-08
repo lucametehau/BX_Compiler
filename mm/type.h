@@ -6,8 +6,6 @@
 
 namespace MM {
 
-using Temporary = std::string;
-
 struct Type {
     enum Kind {
         INT,
@@ -17,7 +15,7 @@ struct Type {
     } kind;
 
     std::vector<Type> param_types;
-    std::unique_ptr<Type> return_type; // todo, make unique_ptr
+    std::unique_ptr<Type> return_type;
 
     Type() = default;
     Type(Kind k) : kind(k) {}

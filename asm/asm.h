@@ -54,13 +54,11 @@ private:
 
     Register stack_register(const MM::Temporary &temp) {
         // global variable
-        if (temp[0] == '@')
+        if (MM::is_global(temp))
             return temp.substr(1) + "(%rip)";
 
-        assert(temp[0] == '%');
-
         // parameter
-        if (temp[1] == 'p') {
+        if (MM::is_param(temp)) {
             auto id = std::stoi(temp.substr(2));
             if (id < 6)
                 return arg_registers[id];
@@ -69,7 +67,9 @@ private:
         
         auto origin_func = func_of_temp[temp];
 
+#ifdef DEBUG
         std::cout << origin_func << " " << curr_func_name << "\n";
+#endif
 
         if (origin_func == curr_func_name)
             return compute_offset(origin_func, temp);

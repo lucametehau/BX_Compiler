@@ -216,7 +216,7 @@ Function/Procedure evaluation
             std::string code_pointer = muncher.new_temp();
             std::string static_link = muncher.new_temp();
 
-            if (muncher.get_temp(func_name)[0] == '#') {
+            if (MM::is_global_function(muncher.get_temp(func_name))) {
                 instr.push_back(TAC(
                     "const",
                     { func_name },
@@ -253,7 +253,7 @@ Function/Procedure evaluation
     std::string static_link;
 
     // not a global function call
-    if (muncher.is_defined(name) && muncher.get_temp(name)[0] == '%') {
+    if (muncher.is_defined(name) && !MM::is_global_function(muncher.get_temp(name))) {
         code_pointer = muncher.new_temp();
         static_link = muncher.new_temp();
 
@@ -397,7 +397,7 @@ Function/Procedure evaluation
             std::string code_pointer = muncher.new_temp();
             std::string static_link = muncher.new_temp();
 
-            if (muncher.get_temp(func_name)[0] == '#') {
+            if (MM::is_global_function(muncher.get_temp(func_name))) {
                 instr.push_back(TAC(
                     "const",
                     { func_name },
@@ -434,7 +434,7 @@ Function/Procedure evaluation
     std::string static_link;
 
     // not a global function call
-    if (muncher.is_defined(name) && muncher.get_temp(name)[0] == '%') {
+    if (muncher.is_defined(name) && !MM::is_global_function(muncher.get_temp(name))) {
         code_pointer = muncher.new_temp();
         static_link = muncher.new_temp();
 

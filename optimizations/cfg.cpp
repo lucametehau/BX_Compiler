@@ -95,9 +95,10 @@ void CFG::make_cfg(std::vector<TAC>& instr) {
     // auto temp_ind = 0;
     std::map<MM::Temporary, MM::Temporary> new_temp;
 
+    // function of temporary is inherited from root temporary
     auto resolve_temp = [&](MM::Temporary temp) {
-        if (temp[0] == '%' && std::isdigit(temp[1])) {
-            muncher.get_func_of_temps()[temp] = muncher.get_func_of_temps()[temp.substr(0, temp.find('.'))];
+        if (MM::is_normal_temp(temp)) {
+            muncher.get_func_of_temps()[temp] = muncher.get_func_of_temps()[MM::root(temp)];
         }
         return temp;
     };
@@ -412,15 +413,12 @@ void CFG::ssa_crude() {
         
         std::vector<std::shared_ptr<TAC>> new_instr;
         
-        // Skip label instruction
         auto insert_pos = block.get_instr().begin();
         if (insert_pos != block.get_instr().end()) insert_pos++;
 
         for (auto &temp : live_in.get_set()) {
-            // Only process user temporaries (starts with %) and ignore params (%p)
-            if (temp[0] == '%' && temp[1] != 'p' && temp[1] != '.') {
+            if (MM::is_normal_temp(temp)) {
                 std::map<Label, std::string> phi_args;
-                // Initialize args with the original name as a placeholder
                 for (auto &p : preds) phi_args[p] = temp;
                 
                 new_instr.push_back(std::make_shared<TAC>("phi", phi_args, temp));
@@ -461,28 +459,21 @@ void CFG::ssa_crude() {
             pushed_count[original]++;
         }
 
-        // 3b. Rename Body Instructions
         for (auto &tac : block.get_instr()) {
             if (tac->get_opcode() == "phi") continue;
 
-            // Rename Uses (Args)
             for (auto &arg : tac->get_args()) {
-                if (arg[0] == '%' && arg[1] != 'p' && arg[1] != '.') {
-                    // Check if we have a version on stack for this variable
-                    // We check if the 'root' (e.g., %8) has a stack
+                if (MM::is_normal_temp(arg)) {
                     std::string root = arg; 
-                    // Note: If arg is already versioned (rare in crude), strip suffix. 
-                    // But here inputs are raw.
                     if (!stacks[root].empty()) {
                         arg = stacks[root].back();
                     }
                 }
             }
 
-            // Rename Definition (Result)
             if (tac->has_result()) {
-                std::string res = tac->get_result();
-                if (res[0] == '%' && res[1] != 'p' && res[1] != '.') {
+                auto res = tac->get_result();
+                if (MM::is_normal_temp(res)) {
                     std::string fresh = new_name(res);
                     tac->set_result(fresh);
                     stacks[res].push_back(fresh);
@@ -526,8 +517,6 @@ void CFG::ssa_crude() {
             break;
         }
     }
-
-    std::cout << "aaaa\n";
 }
 
 void CFG::copy_propagation() {
@@ -607,7 +596,7 @@ void CFG::copy_propagation() {
                     while (insert_pos != pred_instr.begin()) {
                         auto prev = std::prev(insert_pos);
                         std::string op = (*prev)->get_opcode();
-                        if (op == "jmp" || op == "jg" || op == "jl" || op == "je" || op == "ret" || op == "call") {
+                        if (op == "jmp" || op == "ret" || assembly::jumps.find(op) != assembly::jumps.end()) {
                             insert_pos--;
                         } else {
                             break;
@@ -637,28 +626,17 @@ void CFG::copy_propagation() {
 }
 
 void CFG::eliminate_dead_copies() {
-    for (auto &block : blocks) {
-        std::cout << block.get_label() << "\n";
-        for (auto &instr : block.get_instr()) {
-            std::cout << *instr << "\n";
-        }
-    }
-    std::cout << "Before eliminating\n";
     bool changed = true;
-    int op = 100;
-    while (changed && --op > 0) {
+    while (changed) {
         changed = false;
         std::map<std::string, int> use_count;
 
-        std::cout << "HUH\n";
-        // 1. Count uses of all temporaries
         for (auto &block : blocks) {
             for (auto &tac : block.get_instr()) {
-                // Standard args
                 for (auto &arg : tac->get_args()) {
                     if (arg[0] == '%') use_count[arg]++;
                 }
-                // Phi args
+
                 if (tac->get_opcode() == "phi") {
                     for (auto &[label, arg] : tac->get_phi_args()) {
                         if (arg[0] == '%') use_count[arg]++;
@@ -667,54 +645,23 @@ void CFG::eliminate_dead_copies() {
             }
         }
 
-        std::cout << "WHERE\n";
-
-        // 2. Remove dead instructions
         for (auto &block : blocks) {
             auto &instr = block.get_instr();
-            // Use iterator to safely erase while looping
             for (auto it = instr.begin(); it != instr.end(); ) {
                 auto tac = *it;
-                std::cout << tac << "\n";
                 
-                // Check if it's a copy instruction
-                if (tac->get_opcode() == "copy" && tac->has_result()) {
+                if (tac->get_opcode() == "copy" && tac->has_result() && tac->get_args().size() != 2) {
                     std::string res = tac->get_result();
                     
-                    // If result is never used, delete the instruction
                     if (use_count[res] == 0) {
                         it = instr.erase(it);
                         changed = true;
-                        continue; // Skip the increment
+                        continue;
                     }
                 }
                 
                 ++it;
             }
-        }
-
-        std::cout << "After iteration " << op << "\n";
-        for (auto &block : blocks) {
-            std::cout << block.get_label() << "\n";
-            for (auto &instr : block.get_instr()) {
-                std::cout << *instr << "\n";
-            }
-        }
-    }
-
-    std::cout << "After eliminating " << op << "\n";
-    for (auto &block : blocks) {
-        std::cout << block.get_label() << "\n";
-        for (auto &instr : block.get_instr()) {
-            std::cout << *instr << "\n";
-        }
-    }
-
-    std::cout << "After eliminating EVERYTHING ------------------------------------------------- " << op << "\n";
-    for (auto &block : blocks) {
-        std::cout << block.get_label() << "\n";
-        for (auto &instr : block.get_instr()) {
-            std::cout << *instr << "\n";
         }
     }
 }

@@ -89,7 +89,6 @@ public:
         auto temp = "%" + std::to_string(temp_ind++);
         func_of_temp[temp] = get_function_tree(); // declare temporary's function
         func_of_temp[temp] = func_of_temp[temp].substr(0, func_of_temp[temp].size() - 2); // without the ::
-        std::cout << temp << " -> " << func_of_temp[temp] << "\n";
         return temp;
     }
 

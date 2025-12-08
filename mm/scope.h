@@ -3,6 +3,7 @@
 #include <string>
 #include <optional>
 #include "type.h"
+#include "temporary.h"
 
 namespace MM {
 
@@ -30,7 +31,7 @@ public:
         function = {name, type};
     }
 
-    [[nodiscard]] std::string get_temp(const std::string& name) const {
+    [[nodiscard]] Temporary get_temp(const std::string& name) const {
         auto it = temp_map.find(name);
         assert (it != temp_map.end());
         return it->second.temp;
