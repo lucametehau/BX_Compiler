@@ -95,29 +95,26 @@ void CFG::make_cfg(std::vector<TAC>& instr) {
     // auto temp_ind = 0;
     std::map<MM::Temporary, MM::Temporary> new_temp;
 
-    // careful not to do this for now, would need to update muncher.func_of_temp map!!
-    auto relabel_temp = [&](MM::Temporary temp) {
-        // if (temp[0] == '%' && std::isdigit(temp[1])) {
-        //     if (new_temp.find(temp) == new_temp.end())
-        //         new_temp[temp] = "%" + std::to_string(++temp_ind);
-        //     temp = new_temp[temp];
-        // }
+    auto resolve_temp = [&](MM::Temporary temp) {
+        if (temp[0] == '%' && std::isdigit(temp[1])) {
+            muncher.get_func_of_temps()[temp] = muncher.get_func_of_temps()[temp.substr(0, temp.find('.'))];
+        }
         return temp;
     };
 
-    auto relabel_instr = [&](TAC& tac) {
+    auto resolve_instr = [&](TAC& tac) {
         for (auto &arg : tac.get_args()) {
-            arg = relabel_temp(arg);
+            arg = resolve_temp(arg);
         }
 
         if (tac.has_result()) {
-            tac.set_result(relabel_temp(tac.get_result()));
+            tac.set_result(resolve_temp(tac.get_result()));
         }
     };
 
     // treat globals separately
     for (auto &global : muncher.get_globals()) {
-        relabel_instr(global);
+        resolve_instr(global);
         instr.push_back(global);
     }
 
@@ -125,7 +122,7 @@ void CFG::make_cfg(std::vector<TAC>& instr) {
         auto block_instr = block.get_instr();
         for (auto &t : block_instr) {
             // std::cout << "Before " << *t << " ";
-            relabel_instr(*t);
+            resolve_instr(*t);
             instr.push_back(*t);
 #ifdef DEBUG
             std::cout << *t << "\n";
@@ -373,283 +370,352 @@ void CFG::build_liveness() {
 }
 
 void CFG::ssa_crude() {
-    // build liveness
+    // =========================================================
+    // PART 1: LIVENESS ANALYSIS (Needed to find where to put Phis)
+    // =========================================================
     std::map<Label, Set> live_in_block, live_out_block;
     std::map<Label, Set> def_block, use_block;
 
-    // build def and use sets
     for (auto &block : blocks) {
         block.build_def_use(def_block[block.get_label()], use_block[block.get_label()]);
     }
 
-    // liveness of each block
-    {
-        bool changed = true;
-        while (changed) {
-            changed = false;
-            for (auto it = blocks.rbegin(); it != blocks.rend(); it++) {
-                auto &block = *it;
-                auto label = block.get_label();
-                auto temp_in = live_in_block[label];
-                auto temp_out = live_out_block[label];
+    // Iterative liveness
+    bool changed = true;
+    while (changed) {
+        changed = false;
+        for (auto it = blocks.rbegin(); it != blocks.rend(); it++) {
+            auto &block = *it;
+            auto label = block.get_label();
+            auto temp_in = live_in_block[label];
 
-                live_out_block[label] = Set();
-                for (auto &[succ_label, _] : graph[label]) {
-                    live_out_block[label] = live_out_block[label].join(live_in_block[succ_label]);
-                }
-
-                live_in_block[label] = use_block[label].join(live_out_block[label].minus(def_block[label]));
-                if (live_in_block[label] != temp_in || live_out_block[label] != temp_out)
-                    changed = true;
+            live_out_block[label] = Set();
+            for (auto &[succ_label, _] : graph[label]) {
+                live_out_block[label] = live_out_block[label].join(live_in_block[succ_label]);
             }
+
+            live_in_block[label] = use_block[label].join(live_out_block[label].minus(def_block[label]));
+            
+            if (live_in_block[label] != temp_in) changed = true;
         }
     }
 
-    // liveness of each instruction
+    // =========================================================
+    // PART 2: INSERT PHI NODES
+    // =========================================================
     for (auto &block : blocks) {
-        block.build_liveness(live_in_block[block.get_label()], live_out_block[block.get_label()]);
-    }
-    
-    // add phi functions at block entries based on live-in sets
-    for (auto &block : blocks) {
+        if (block.is_starting()) continue;
+
         auto label = block.get_label();
         auto preds = get_predecessors(label);
         auto live_in = live_in_block[label];
         
         std::vector<std::shared_ptr<TAC>> new_instr;
+        
+        // Skip label instruction
+        auto insert_pos = block.get_instr().begin();
+        if (insert_pos != block.get_instr().end()) insert_pos++;
+
         for (auto &temp : live_in.get_set()) {
-            std::map<Label, std::string> phi_args;
-            for (auto &pred_label : preds) {
-                phi_args[pred_label] = temp;
+            // Only process user temporaries (starts with %) and ignore params (%p)
+            if (temp[0] == '%' && temp[1] != 'p' && temp[1] != '.') {
+                std::map<Label, std::string> phi_args;
+                // Initialize args with the original name as a placeholder
+                for (auto &p : preds) phi_args[p] = temp;
+                
+                new_instr.push_back(std::make_shared<TAC>("phi", phi_args, temp));
             }
-            new_instr.push_back(std::make_shared<TAC>(
-                "phi",
-                phi_args,
-                ""
-            ));
         }
-        
-        // insert phi instructions at the beginning of the block
-        auto &instr = block.get_instr();
-        instr.insert(instr.begin(), new_instr.begin(), new_instr.end());
+        block.get_instr().insert(insert_pos, new_instr.begin(), new_instr.end());
     }
-    
-    // temporary versioning
+
+    // =========================================================
+    // PART 3: RENAMING (DFS + Stack)
+    // =========================================================
     std::map<std::string, int> version_counter;
-    std::map<Label, std::map<std::string, std::string>> version_maps;
-    
-    // version_maps["entry"] = {};
-    
-    for (auto &block : blocks) {
-        auto label = block.get_label();
-        auto &instr = block.get_instr();
-        std::map<std::string, std::string> &ver_map = version_maps[label];
-        
-        for (auto &tac_ptr : instr) {
-            auto &t = *tac_ptr;
+    std::map<std::string, std::vector<std::string>> stacks;
+    std::set<Label> visited;
+
+    auto new_name = [&](std::string original) {
+        if (version_counter.find(original) == version_counter.end())
+            version_counter[original] = 0;
+        return original + "." + std::to_string(version_counter[original]++);
+    };
+
+    std::function<void(Label)> rename = [&](Label label) {
+        if (visited.count(label)) return;
+        visited.insert(label);
+
+        auto &block = get_block(label);
+        std::map<std::string, int> pushed_count; // For popping later
+
+        // 3a. Rename Phi Results (Definitions)
+        for (auto &tac : block.get_instr()) {
+            if (tac->get_opcode() != "phi") continue;
             
-            for (auto &arg : t.get_args()) {
-                if (arg[0] == '%' && ver_map.count(arg)) {
-                    arg = ver_map[arg];
-                }
-            }
+            std::string original = tac->get_result();
+            std::string fresh = new_name(original);
+            tac->set_result(fresh);
             
-            if (t.get_opcode() == "phi") {
-                auto &phi_args = t.get_phi_args();
-                for (auto &[pred_label, temp] : phi_args) {
-                    if (version_maps.count(pred_label) && version_maps[pred_label].count(temp)) {
-                        phi_args[pred_label] = version_maps[pred_label][temp];
+            stacks[original].push_back(fresh);
+            pushed_count[original]++;
+        }
+
+        // 3b. Rename Body Instructions
+        for (auto &tac : block.get_instr()) {
+            if (tac->get_opcode() == "phi") continue;
+
+            // Rename Uses (Args)
+            for (auto &arg : tac->get_args()) {
+                if (arg[0] == '%' && arg[1] != 'p' && arg[1] != '.') {
+                    // Check if we have a version on stack for this variable
+                    // We check if the 'root' (e.g., %8) has a stack
+                    std::string root = arg; 
+                    // Note: If arg is already versioned (rare in crude), strip suffix. 
+                    // But here inputs are raw.
+                    if (!stacks[root].empty()) {
+                        arg = stacks[root].back();
                     }
                 }
             }
-            
-            if (t.has_result() && t.get_result()[0] == '%' && std::isdigit(t.get_result()[1])) {
-                std::string root = t.get_result();
-                if (version_counter.count(root) == 0) {
-                    version_counter[root] = 0;
+
+            // Rename Definition (Result)
+            if (tac->has_result()) {
+                std::string res = tac->get_result();
+                if (res[0] == '%' && res[1] != 'p' && res[1] != '.') {
+                    std::string fresh = new_name(res);
+                    tac->set_result(fresh);
+                    stacks[res].push_back(fresh);
+                    pushed_count[res]++;
                 }
-                std::string new_temp = root + "." + std::to_string(version_counter[root]++);
-                t.set_result(new_temp);
-                ver_map[root] = new_temp;
             }
         }
-    }
-    
-    for (auto &block : blocks) {
-        auto &instr = block.get_instr();
-        for (auto &tac_ptr : instr) {
-            if (tac_ptr->get_opcode() == "phi") {
-                auto &phi_args = tac_ptr->get_phi_args();
-                for (auto &[pred_label, temp] : phi_args) {
-                    if (version_maps.count(pred_label)) {
-                        std::string root = temp;
-                        size_t dot_pos = root.find('.');
-                        if (dot_pos != std::string::npos) {
-                            root = root.substr(0, dot_pos);
-                        }
-                        if (version_maps[pred_label].count(root)) {
-                            phi_args[pred_label] = version_maps[pred_label][root];
-                        }
+
+        // 3c. Update Successors' Phi Args (The Loop Fix)
+        for (auto &[succ_label, _] : graph[label]) {
+            auto &succ_block = get_block(succ_label);
+            for (auto &tac : succ_block.get_instr()) {
+                if (tac->get_opcode() != "phi") continue;
+
+                auto &phi_args = tac->get_phi_args();
+                // If this successor expects an input from 'label' (us)
+                if (phi_args.count(label)) {
+                    std::string root = phi_args[label]; // Placeholder holds root name
+                    if (!stacks[root].empty()) {
+                        phi_args[label] = stacks[root].back();
                     }
                 }
             }
         }
+
+        // 3d. Recurse
+        for (auto &[succ_label, _] : graph[label]) {
+            rename(succ_label);
+        }
+
+        // 3e. Pop Stacks (Backtracking)
+        for (auto const& [var, count] : pushed_count) {
+            for(int i=0; i<count; ++i) stacks[var].pop_back();
+        }
+    };
+
+    // Start renaming from entry
+    for (auto &block : blocks) {
+        if (block.is_starting()) {
+            rename(block.get_label());
+            break;
+        }
     }
+
+    std::cout << "aaaa\n";
 }
 
 void CFG::copy_propagation() {
-    // bool changed = true;
-    // while (changed) {
-    //     changed = false;
-        
-    //     // copy map: for each copy instruction %u = copy %v, map u -> v
-    //     std::map<std::string, std::string> copy_map;
-    //     for (auto &block : blocks) {
-    //         auto &instr = block.get_instr();
-    //         for (auto &tac_ptr : instr) {
-    //             if (tac_ptr->get_opcode() == "copy" && tac_ptr->has_result() && tac_ptr->get_arg()[1] != 'p') {
-    //                 std::string from = tac_ptr->get_arg();  // Assuming single arg for copy
-    //                 std::string to = tac_ptr->get_result();
-    //                 copy_map[to] = from;
-    //             }
-    //         }
-    //     }
-        
-    //     for (auto &block : blocks) {
-    //         auto &instr = block.get_instr();
-    //         for (auto &tac_ptr : instr) {
-    //             if (tac_ptr->get_opcode() == "phi") {
-    //                 auto &phi_args = tac_ptr->get_phi_args();
-    //                 for (auto &[label, temp] : phi_args) {
-    //                     if (copy_map.count(temp)) {
-    //                         phi_args[label] = copy_map[temp];
-    //                         changed = true;
-    //                     }
-    //                 }
-    //             } else {
-    //                 for (auto &arg : tac_ptr->get_args()) {
-    //                     if (copy_map.count(arg)) {
-    //                         arg = copy_map[arg];
-    //                         changed = true;
-    //                     }
-    //                 }
-    //             }
-                
-    //             if (tac_ptr->has_result() && tac_ptr->get_opcode() != "copy" && copy_map.count(tac_ptr->get_result())) {
-    //                 tac_ptr->set_result(copy_map[tac_ptr->get_result()]);
-    //                 changed = true;
-    //                 std::cout << "We changed " << *tac_ptr << "\n";
-    //             }
-    //         }
-    //     }
-        
-    //     for (auto &block : blocks) {
-    //         auto &instr = block.get_instr();
-    //         instr.erase(std::remove_if(instr.begin(), instr.end(), 
-    //             [](const std::shared_ptr<TAC>& tac) {
-    //                 return tac->get_opcode() == "copy" && 
-    //                        tac->has_result() && 
-    //                        tac->get_result() == tac->get_arg();
-    //             }), instr.end());
-    //     }
-    // }
-
-    // std::cout << "After copy propagation:\n";
-    // for (auto &block : blocks) {
-    //     std::cout << block.get_label() << "\n";
-    //     for (auto &instr : block.get_instr())
-    //         std::cout << *instr << "\n";
-    // }
-
     bool changed = true;
     while (changed) {
         changed = false;
+        std::map<std::string, std::string> replacements;
+
+        // 1. Gather all copies across ALL blocks
         for (auto &block : blocks) {
-            auto &instr = block.get_instr();
-            for (std::size_t i = 0; i < instr.size(); i++) {
-                auto tac = instr[i];
-                if (tac->get_opcode() != "copy" || tac->get_args().size() > 1)
-                    continue;
+            for (auto &tac : block.get_instr()) {
+                // If we find %x = copy %y
+                if (tac->get_opcode() == "copy" && tac->get_args().size() == 1) {
+                    std::string to = tac->get_result();
+                    std::string from = tac->get_arg();
+                    
+                    // Don't propagate if copying a parameter register (optional safeguard)
+                    if (from[1] == 'p') continue;
 
-                auto from = tac->get_arg();
-                auto to = tac->get_result();
+                    // Record replacement: %x -> %y
+                    replacements[to] = from;
+                }
+            }
+        }
 
-                // we are copying a function parameter
-                // don't modify
-                if (from[1] == 'p')
-                    continue;
+        if (replacements.empty()) break;
 
-                for (std::size_t j = i + 1; j < instr.size(); j++) {
-                    auto curr_tac = instr[j];
+        // 2. Apply replacements to usages globally
+        for (auto &block : blocks) {
+            for (auto &tac : block.get_instr()) {
+                // Replace in standard arguments
+                for (auto &arg : tac->get_args()) {
+                    // While loop handles chains like A->B->C
+                    while (replacements.count(arg)) {
+                        arg = replacements[arg];
+                        changed = true;
+                    }
+                }
 
-                    // instruction changes our temporaries
-                    if (curr_tac->has_result() && (curr_tac->get_result() == from || curr_tac->get_result() == to))
-                        break;
-
-                    for (auto &arg : curr_tac->get_args()) {
-                        if (arg == to) {
-                            arg = from;
+                // Replace in PHI arguments
+                if (tac->get_opcode() == "phi") {
+                    auto &phi_args = tac->get_phi_args();
+                    for (auto &[label, arg] : phi_args) {
+                        while (replacements.count(arg)) {
+                            arg = replacements[arg];
                             changed = true;
-                            break;
                         }
                     }
                 }
+            }
+        }
+    }
+
+    // propagate phis now
+
+    
+
+    for (auto &block : blocks) {
+        auto &instr = block.get_instr();
+        
+        for (auto &tac : instr) {
+            if (tac->get_opcode() == "phi") {
+                std::string dest = tac->get_result();
+                
+                // For each predecessor (source of the value)
+                for (auto &[pred_label, src_temp] : tac->get_phi_args()) {
+                    // Find the predecessor block
+                    auto &pred_block = get_block(pred_label);
+                    auto &pred_instr = pred_block.get_instr();
+                    
+                    // We must insert the copy at the END of the predecessor, 
+                    // but BEFORE the jump/branch instruction.
+                    auto insert_pos = pred_instr.end();
+                    
+                    // Move iterator back to skip jumps/branches/labels at the end
+                    // (Adjust this condition based on exactly what your jumps look like)
+                    while (insert_pos != pred_instr.begin()) {
+                        auto prev = std::prev(insert_pos);
+                        std::string op = (*prev)->get_opcode();
+                        if (op == "jmp" || op == "jg" || op == "jl" || op == "je" || op == "ret" || op == "call") {
+                            insert_pos--;
+                        } else {
+                            break;
+                        }
+                    }
+
+                    // Insert: %dest = copy %src_temp
+                    pred_instr.insert(insert_pos, std::make_shared<TAC>(
+                        "copy", std::vector<std::string>{src_temp}, dest
+                    ));
+                }
+            }
+        }
+    }
+
+    // 2. Now it is safe to delete all Phis
+    for (auto &block : blocks) {
+        auto &instr = block.get_instr();
+        for (auto it = instr.begin(); it != instr.end(); ) {
+            if ((*it)->get_opcode() == "phi") {
+                it = instr.erase(it);
+            } else {
+                ++it;
             }
         }
     }
 }
 
 void CFG::eliminate_dead_copies() {
-    // bool changed = true;
-    // while (changed) {
-    //     build_liveness();
-    //     changed = false;
-    //     for (auto &block : blocks) {
-    //         auto &instr = block.get_instr();
-    //         auto label = block.get_label();
-    //         std::vector<std::shared_ptr<TAC>> new_instr;
-
-    //         for (std::size_t i = 0; i < instr.size(); i++) {
-    //             auto tac = instr[i];
-    //             if (tac->get_opcode() != "copy" || tac->get_args().size() > 1) {
-    //                 new_instr.push_back(tac);
-    //                 continue;
-    //             }
-
-    //             bool is_dead = true;
-    //             auto result = tac->get_result();
-    //             if (block.get_live_out(i).count(result))
-    //                 is_dead = false;
-    //             else {
-    //                 for (auto &[son, _] : graph[block.get_label()]) {
-    //                     auto &succ_block = get_block(son);
-    //                     for (auto &succ_tac : succ_block.get_instr()) {
-    //                         if (succ_tac->get_opcode() == "phi") {
-    //                             for (auto &[pred_label, temp] : succ_tac->get_phi_args()) {
-    //                                 if (pred_label == block.get_label() && temp == result) {
-    //                                     is_dead = false;
-    //                                     break;
-    //                                 }
-    //                             }
-    //                         }
-    //                         if (!is_dead) break;
-    //                     }
-    //                     if (!is_dead) break;
-    //                 }
-    //             }
-
-    //             if (!is_dead)
-    //                 new_instr.push_back(tac);
-    //             else
-    //                 changed = true;
-    //         }
-
-    //         block.set_instr(new_instr);
-    //     }
-    // }
-    build_liveness();
     for (auto &block : blocks) {
-        block.eliminate_dead_copies();
+        std::cout << block.get_label() << "\n";
+        for (auto &instr : block.get_instr()) {
+            std::cout << *instr << "\n";
+        }
+    }
+    std::cout << "Before eliminating\n";
+    bool changed = true;
+    int op = 100;
+    while (changed && --op > 0) {
+        changed = false;
+        std::map<std::string, int> use_count;
+
+        std::cout << "HUH\n";
+        // 1. Count uses of all temporaries
+        for (auto &block : blocks) {
+            for (auto &tac : block.get_instr()) {
+                // Standard args
+                for (auto &arg : tac->get_args()) {
+                    if (arg[0] == '%') use_count[arg]++;
+                }
+                // Phi args
+                if (tac->get_opcode() == "phi") {
+                    for (auto &[label, arg] : tac->get_phi_args()) {
+                        if (arg[0] == '%') use_count[arg]++;
+                    }
+                }
+            }
+        }
+
+        std::cout << "WHERE\n";
+
+        // 2. Remove dead instructions
+        for (auto &block : blocks) {
+            auto &instr = block.get_instr();
+            // Use iterator to safely erase while looping
+            for (auto it = instr.begin(); it != instr.end(); ) {
+                auto tac = *it;
+                std::cout << tac << "\n";
+                
+                // Check if it's a copy instruction
+                if (tac->get_opcode() == "copy" && tac->has_result()) {
+                    std::string res = tac->get_result();
+                    
+                    // If result is never used, delete the instruction
+                    if (use_count[res] == 0) {
+                        it = instr.erase(it);
+                        changed = true;
+                        continue; // Skip the increment
+                    }
+                }
+                
+                ++it;
+            }
+        }
+
+        std::cout << "After iteration " << op << "\n";
+        for (auto &block : blocks) {
+            std::cout << block.get_label() << "\n";
+            for (auto &instr : block.get_instr()) {
+                std::cout << *instr << "\n";
+            }
+        }
+    }
+
+    std::cout << "After eliminating " << op << "\n";
+    for (auto &block : blocks) {
+        std::cout << block.get_label() << "\n";
+        for (auto &instr : block.get_instr()) {
+            std::cout << *instr << "\n";
+        }
+    }
+
+    std::cout << "After eliminating EVERYTHING ------------------------------------------------- " << op << "\n";
+    for (auto &block : blocks) {
+        std::cout << block.get_label() << "\n";
+        for (auto &instr : block.get_instr()) {
+            std::cout << *instr << "\n";
+        }
     }
 }
 

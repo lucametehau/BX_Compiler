@@ -37,6 +37,8 @@ private:
     // keeps the assembly name given to a function
     std::map<std::string, std::string> asm_name;
 
+    std::map<std::string, std::map<MM::Temporary, std::size_t>> stack_position;
+
     std::ofstream& os;
 
 public:
@@ -46,8 +48,8 @@ public:
 
 private:
 
-    Register compute_offset(MM::Temporary temp, std::size_t offset, Register offset_register = "%rbp") {
-        return "-" + std::to_string(8 * (std::stoi(temp.substr(1)) - offset + 2)) + "(" + offset_register + ")";
+    Register compute_offset(std::string func_name, MM::Temporary temp, Register offset_register = "%rbp") {
+        return "-" + std::to_string(8 * stack_position[func_name][temp]) + "(" + offset_register + ")";
     }
 
     Register stack_register(const MM::Temporary &temp) {
@@ -64,10 +66,13 @@ private:
                 return arg_registers[id];
             return std::to_string(8 * (id - 6 + 2)) + "(%rbp)";
         }
-
+        
         auto origin_func = func_of_temp[temp];
+
+        std::cout << origin_func << " " << curr_func_name << "\n";
+
         if (origin_func == curr_func_name)
-            return compute_offset(temp, stack_offset);
+            return compute_offset(origin_func, temp);
         else {
             int delta = 0;
             auto curr = curr_func_name;
@@ -97,7 +102,7 @@ private:
             for (int i = 1; i < delta; i++)
                 os << "\tmovq -8(" << last_capture_register << "), " << last_capture_register << "\n";
 
-            return compute_offset(temp, bounds[curr].first, last_capture_register);
+            return compute_offset(curr, temp, last_capture_register);
         }
     }
 

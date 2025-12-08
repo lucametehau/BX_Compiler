@@ -26,7 +26,8 @@ public:
             for (auto &[label, temp] : tac.phi_args) {
                 os << label << ": " << temp << ", ";
             }
-            os << "\n";
+            os << ") -> ";
+            os << tac.result.value() << "\n";
             return os;
         }
         os << "{\"opcode\": \"" << tac.opcode << "\", \"args\": [";

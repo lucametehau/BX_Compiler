@@ -48,8 +48,9 @@ void Assembler::assemble() {
 }
 
 void Assembler::process_proc(std::size_t start, std::size_t finish) {
-    std::size_t mn = 1e9, mx = 0;
     auto func_name = instr[start].get_result();
+
+    std::set<MM::Temporary> temporaries;
     for (auto i = start + 1; i <= finish; i++) {
         auto t = instr[i];
         auto args = t.get_args();
@@ -60,25 +61,21 @@ void Assembler::process_proc(std::size_t start, std::size_t finish) {
         
         for (auto &temp : args) {
             if (func_of_temp[temp] == func_name) {
-                auto num = static_cast<std::size_t>(std::stoi(temp.substr(1)));
-                mn = std::min(mn, num);
-                mx = std::max(mx, num);
+                temporaries.insert(temp);
             }
         }
 
         if (t.has_result()) {
             auto result = t.get_result();
             if (func_of_temp[result] == func_name) {
-                auto num = static_cast<std::size_t>(std::stoi(result.substr(1)));
-                mn = std::min(mn, num);
-                mx = std::max(mx, num);
+                temporaries.insert(result);
             }
         }
     }
 
-    if (mx == 0) mn = mx = 0;
-
-    bounds[func_name] = {mn, mx};
+    int ind = 2;
+    for (auto &temp : temporaries)
+        stack_position[func_name][temp] = ind++;
 }
 
 void Assembler::assemble_proc(std::size_t start, std::size_t finish) {
@@ -87,7 +84,7 @@ void Assembler::assemble_proc(std::size_t start, std::size_t finish) {
 
     curr_func_name = instr[start].get_result();
 
-    stack_size = bounds[curr_func_name].second - bounds[curr_func_name].first + 2 + instr[start].get_args().size();
+    stack_size = stack_position[curr_func_name].size() + 2 + instr[start].get_args().size();
     stack_size = (stack_size + 1) / 2 * 2;
     stack_offset = bounds[curr_func_name].first;
 

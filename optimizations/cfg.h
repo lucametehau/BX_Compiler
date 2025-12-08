@@ -90,6 +90,7 @@ inline void optimize(MM::MM& muncher, std::vector<TAC> &instr, std::string file_
     // apply optimization
     std::string suffix = "";
     if constexpr (opt == OptimizationType::DEAD_COPY_REMOVAL) {
+        cfg.ssa_crude();
         cfg.copy_propagation();
         cfg.eliminate_dead_copies();
         suffix = "deadcopy";
@@ -111,11 +112,11 @@ inline void optimize(MM::MM& muncher, std::vector<TAC> &instr, std::string file_
     instr = cfg.make_tac();
 
     muncher.process(instr);
-    // muncher.jsonify(file_prefix + "." + suffix + ".tac.json", instr);
-    muncher.jsonify(file_prefix + ".tac.json", instr);
+    muncher.jsonify(file_prefix + "." + suffix + ".tac.json", instr);
+    // muncher.jsonify(file_prefix + ".tac.json", instr);
 
-    // std::ofstream asm_file(file_prefix + "_" + suffix + ".s");
-    std::ofstream asm_file(file_prefix + ".s");
+    std::ofstream asm_file(file_prefix + "_" + suffix + ".s");
+    // std::ofstream asm_file(file_prefix + ".s");
     assembly::Assembler assembler(muncher, instr, asm_file);
     assembler.assemble();
 }
